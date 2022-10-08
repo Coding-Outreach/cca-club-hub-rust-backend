@@ -1,0 +1,2 @@
+# we use unstable features, cargo +nightly fmt --all to format
+imports_granularity = "Crate"
