@@ -2,16 +2,16 @@ use crate::schema::*;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 
-#[derive(Queryable, Identifiable)]
+#[derive(Queryable, Insertable, Identifiable)]
 pub struct Club {
     pub id: i32,
     pub username: String,
     pub email: String,
     pub password_hash: String,
     pub club_name: String,
-    pub description: String,
-    pub meet_time: String,
-    pub profile_picture_url: String,
+    pub description: Option<String>,
+    pub meet_time: Option<String>,
+    pub profile_picture_url: Option<String>,
     pub featured: bool,
 }
 

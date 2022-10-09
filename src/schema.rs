@@ -33,6 +33,7 @@ diesel::table! {
         club_name -> Varchar,
         description -> Nullable<Varchar>,
         meet_time -> Nullable<Varchar>,
+        profile_picture_url -> Nullable<Varchar>,
         featured -> Bool,
     }
 }
