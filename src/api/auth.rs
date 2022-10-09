@@ -83,19 +83,22 @@ async fn login(
     use crate::schema::clubs::dsl::*;
 
     let conn = &mut pool.get().await?;
-    let (club_id, club_password_hash) = clubs
+
+    if let Some((club_id, club_password_hash)) = clubs
         .select((id, password_hash))
         .filter(username.eq(req.username))
         .first::<(i32, String)>(conn)
         .await
         .optional()?
-        .ok_or_else(|| AppError::from(StatusCode::UNAUTHORIZED, "Invalid Email"))?;
-
-    if auth::verify_password(req.password, club_password_hash)? {
-        Ok(Json(ClubAuthorizedResponse::from_club_id(club_id)?))
-    } else {
-        Err(AppError::from(StatusCode::UNAUTHORIZED, "Invalid Password"))
+    {
+        if auth::verify_password(req.password, club_password_hash)? {
+            return Ok(Json(ClubAuthorizedResponse::from_club_id(club_id)?));
+        }
     }
+    Err(AppError::from(
+        StatusCode::UNAUTHORIZED,
+        "invalid username or password",
+    ))
 }
 
 pub fn app() -> Router {
