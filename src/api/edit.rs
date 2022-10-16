@@ -1,25 +1,24 @@
 use crate::{
-    auth::{Auth},
+    auth::{ExtractAuth},
     error::{AppError, AppResult},
     models::{Category, ClubCategory},
     schema::*,
     DbPool,
 };
 use axum::{
-    extract::Path,
+    extract::{Path},
     http::{StatusCode},
-    TypedHeader,
     routing::post,
     Extension, Json, Router,
 };
 use diesel::{delete, insert_into, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
-use serde::Serialize;
+use serde::{Deserialize};
 use std::collections::{HashMap, HashSet};
 
 #[derive(AsChangeset)]
 #[diesel(table_name = club_socials)]
-#[derive(Serialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubSocialRequest {
     website: Option<String>,
@@ -28,9 +27,10 @@ struct ClubSocialRequest {
     instagram: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubRequest {
+    #[allow(dead_code)]
     id: Option<String>,
     email: Option<String>,
     club_name: Option<String>,
@@ -55,8 +55,8 @@ async fn edit_club(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRequest>,
     Path(club_id): Path<i32>,
-    TypedHeader(auth): TypedHeader<Auth>,
-) -> AppResult<StatusCode> {
+    ExtractAuth(auth): ExtractAuth,
+) -> AppResult<Json<()>> {
     auth.is_authorized(club_id)?;
 
     let conn = &mut pool.get().await?;
@@ -84,7 +84,7 @@ async fn edit_club(
 
     for category in &new_categories {
         if !all_categories.contains_key(category) {
-            return Err(AppError::from(StatusCode::UNAUTHORIZED, "invalid category"));
+            return Err(AppError::from(StatusCode::BAD_REQUEST, "invalid category"));
         }
     }
 
@@ -120,7 +120,7 @@ async fn edit_club(
             .await?;
     }
 
-    Ok(StatusCode::ACCEPTED)
+    Ok(Json(()))
 }
 
 pub fn app() -> Router {
