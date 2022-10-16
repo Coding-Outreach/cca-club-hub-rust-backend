@@ -1,7 +1,13 @@
+use crate::error::{AppError, AppResult, ResponseStatusError};
 use argon2::Argon2;
-use jsonwebtoken::{
-    errors::Result as JwtResult, DecodingKey, EncodingKey, Header, TokenData, Validation,
+use axum::{
+    async_trait,
+    extract::{FromRequest, RequestParts},
+    headers::{authorization::Bearer, Authorization},
+    http::StatusCode,
+    TypedHeader,
 };
+use jsonwebtoken::{errors::Result as JwtResult, DecodingKey, EncodingKey};
 use password_hash::{
     self, rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
 };
@@ -27,7 +33,6 @@ pub fn verify_password(
 
 struct Keys {
     encoding: EncodingKey,
-    #[allow(unused)]
     decoding: DecodingKey,
 }
 
@@ -55,7 +60,7 @@ pub fn ensure_jwt_secret_is_valid() {
 
 pub fn generate_jwt(club_id: i32, exp: Duration) -> JwtResult<String> {
     jsonwebtoken::encode(
-        &Header::default(),
+        &Default::default(),
         &Claims {
             club_id,
             exp: jsonwebtoken::get_current_timestamp() + exp.as_secs(),
@@ -64,6 +69,44 @@ pub fn generate_jwt(club_id: i32, exp: Duration) -> JwtResult<String> {
     )
 }
 
-pub fn validate_jwt(token: &str) -> JwtResult<TokenData<Claims>> {
-    jsonwebtoken::decode::<Claims>(token, &KEYS.decoding, &Validation::default())
+#[derive(Debug, Clone)]
+pub struct Auth(Result<i32, ResponseStatusError>);
+
+#[async_trait]
+impl<B: Send> FromRequest<B> for Auth {
+    type Rejection = ();
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        async fn inner<B: Send>(req: &mut RequestParts<B>) -> Result<i32, ResponseStatusError> {
+            let TypedHeader(Authorization(bearer)) = req
+                .extract::<TypedHeader<Authorization<Bearer>>>()
+                .await
+                .map_err(|_| (StatusCode::BAD_REQUEST, "Missing credentials"))?;
+            let claims =
+                jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Default::default())
+                    .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid token"))?
+                    .claims;
+
+            if claims.exp < jsonwebtoken::get_current_timestamp() {
+                Err((StatusCode::UNAUTHORIZED, "Token expired"))?
+            } else {
+                Ok(claims.club_id)
+            }
+        }
+
+        Ok(Self(inner(req).await))
+    }
+}
+
+impl Auth {
+    pub fn is_authorized(self, club_id: i32) -> AppResult<()> {
+        if self.0? == club_id {
+            Ok(())
+        } else {
+            Err(AppError::from(
+                StatusCode::UNAUTHORIZED,
+                "Wrong credentials",
+            ))
+        }
+    }
 }
