@@ -6,7 +6,7 @@ use crate::{
     DbPool,
 };
 use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
-use diesel::{delete, prelude::*, insert_into, update, AsChangeset, ExpressionMethods};
+use diesel::{delete, insert_into, prelude::*, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -102,11 +102,9 @@ async fn edit_club(
 
     let new_club_categories: Vec<NewClubCategory> = new_categories
         .into_iter()
-        .map(|name| {
-            NewClubCategory {
-                club_id,
-                category_id: *all_categories.get(&name).unwrap(),
-            }
+        .map(|name| NewClubCategory {
+            club_id,
+            category_id: *all_categories.get(&name).unwrap(),
         })
         .collect();
 
