@@ -1,8 +1,8 @@
 use axum::Router;
 
 pub mod auth;
-pub mod edit;
 pub mod club;
+pub mod edit;
 
 pub fn app() -> Router {
     Router::new()
