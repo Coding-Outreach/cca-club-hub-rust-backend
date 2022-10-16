@@ -1,11 +1,11 @@
 use crate::{
     auth,
     error::{AppError, AppResult},
-    models::Club,
+    schema::*,
     DbPool,
 };
 use axum::{http::StatusCode, routing::post, Extension, Json, Router};
-use diesel::{dsl::max, prelude::*};
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -43,37 +43,55 @@ impl ClubAuthorizedResponse {
     }
 }
 
+// TODO: default profile picture url
+const DEFAULT_PROFILE_PICTURE_URL: &str = "";
+
 // TODO: email users after registering
 async fn register(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRegisterRequest>,
 ) -> AppResult<Json<ClubAuthorizedResponse>> {
-    use crate::schema::clubs::dsl::*;
+    #[derive(Insertable)]
+    #[diesel(table_name = clubs)]
+    struct NewClub {
+        username: String,
+        email: String,
+        password_hash: String,
+        club_name: String,
+        description: Option<String>,
+        meet_time: Option<String>,
+        profile_picture_url: String,
+        featured: bool,
+    }
 
     let conn = &mut pool.get().await?;
-    let new_id: i32 = clubs
-        .select(max(id))
-        .first::<Option<i32>>(conn)
-        .await?
-        .unwrap_or(0)
-        + 1;
 
-    diesel::insert_into(clubs)
-        .values(Club {
-            id: new_id,
+    let new_id = diesel::insert_into(clubs::table)
+        .values(NewClub {
             username: req.username,
             email: req.email,
             password_hash: auth::hash_password(req.password)?,
             club_name: req.name,
             description: req.description,
             meet_time: req.meet_time,
-            profile_picture_url: None,
+            profile_picture_url: DEFAULT_PROFILE_PICTURE_URL.to_string(),
             featured: false,
         })
-        .execute(conn)
-        .await?;
+        .on_conflict(clubs::username)
+        .do_nothing()
+        .returning(clubs::id)
+        .get_result(conn)
+        .await
+        .optional()?;
 
-    Ok(Json(ClubAuthorizedResponse::from_club_id(new_id)?))
+    if let Some(new_id) = new_id {
+        Ok(Json(ClubAuthorizedResponse::from_club_id(new_id)?))
+    } else {
+        Err(AppError::from(
+            StatusCode::CONFLICT,
+            "username has been taken",
+        ))
+    }
 }
 
 async fn login(

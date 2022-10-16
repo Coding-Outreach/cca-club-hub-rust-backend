@@ -13,8 +13,33 @@ use std::collections::HashMap;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubSocialResponse {
-    name: String,
-    link: String,
+    email: String,
+    website: Option<String>,
+    google_classroom: Option<String>,
+    discord: Option<String>,
+    instagram: Option<String>,
+}
+
+impl ClubSocialResponse {
+    fn from(email: String, socials: Option<ClubSocial>) -> Self {
+        if let Some(socials) = socials {
+            Self {
+                email,
+                website: socials.website,
+                google_classroom: socials.google_classroom,
+                discord: socials.discord,
+                instagram: socials.instagram,
+            }
+        } else {
+            Self {
+                email,
+                website: None,
+                google_classroom: None,
+                discord: None,
+                instagram: None,
+            }
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -25,10 +50,10 @@ struct ClubResponse {
     club_name: String,
     description: Option<String>,
     meet_time: Option<String>,
-    profile_picture_url: Option<String>,
+    profile_picture_url: String,
     featured: bool,
     categories: Vec<String>,
-    socials: Vec<ClubSocialResponse>,
+    socials: ClubSocialResponse,
 }
 
 impl ClubResponse {
@@ -36,11 +61,11 @@ impl ClubResponse {
         club: Club,
         all_categories: &HashMap<i32, String>,
         category_ids: impl IntoIterator<Item = i32>,
-        socials: impl IntoIterator<Item = ClubSocial>,
+        socials: Option<ClubSocial>,
     ) -> AppResult<ClubResponse> {
         Ok(ClubResponse {
             id: club.id.to_string(),
-            email: club.email,
+            email: club.email.clone(),
             club_name: club.club_name,
             description: club.description,
             meet_time: club.meet_time,
@@ -53,13 +78,7 @@ impl ClubResponse {
                 .ok_or_else(|| {
                     anyhow::anyhow!("database is in an invalid state: invalid category_id")
                 })?,
-            socials: socials
-                .into_iter()
-                .map(|s| ClubSocialResponse {
-                    name: s.social_name,
-                    link: s.social_link,
-                })
-                .collect(),
+            socials: ClubSocialResponse::from(club.email, socials),
         })
     }
 }
@@ -91,12 +110,12 @@ async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResp
             .into_iter()
             .zip(club_category_ids)
             .zip(club_socials)
-            .map(|((club, category_ids), socials)| {
+            .map(|((club, category_ids), mut socials)| {
                 ClubResponse::from(
                     club,
                     &all_categories,
                     category_ids.into_iter().map(|c| c.category_id),
-                    socials,
+                    socials.pop(),
                 )
             })
             .collect::<Result<_, _>>()?,
@@ -129,7 +148,7 @@ async fn info(
             .map(|c| (c.id, c.category_name)),
     );
 
-    let club_socials = ClubSocial::belonging_to(&club)
+    let mut club_socials = ClubSocial::belonging_to(&club)
         .load::<ClubSocial>(conn)
         .await?;
 
@@ -137,7 +156,7 @@ async fn info(
         club,
         &all_categories,
         club_category_ids,
-        club_socials,
+        club_socials.pop(),
     )?))
 }
 
