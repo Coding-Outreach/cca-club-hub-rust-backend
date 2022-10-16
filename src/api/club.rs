@@ -8,13 +8,15 @@ use axum::{extract::Path, http::StatusCode, routing::get, Extension, Json, Route
 use diesel::{prelude::*, BelongingToDsl};
 use diesel_async::RunQueryDsl;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubSocialResponse {
-    name: String,
-    link: String,
+    website: String,
+    google_classroom: String,
+    discord: String,
+    instagram: String,
 }
 
 #[derive(Serialize)]
@@ -56,8 +58,10 @@ impl ClubResponse {
             socials: socials
                 .into_iter()
                 .map(|s| ClubSocialResponse {
-                    name: s.social_name,
-                    link: s.social_link,
+                    website: s.website,
+                    google_classroom: s.google_classroom,
+                    discord: s.discord,
+                    instagram: s.instagram,
                 })
                 .collect(),
         })
