@@ -16,34 +16,34 @@ use std::collections::{HashMap, HashSet};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubSocialRequest {
-    website: Option<String>,
-    google_classroom: Option<String>,
-    discord: Option<String>,
-    instagram: Option<String>,
+    website: String,
+    google_classroom: String,
+    discord: String,
+    instagram: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubRequest {
     #[allow(dead_code)]
-    id: Option<String>,
-    email: Option<String>,
-    club_name: Option<String>,
-    description: Option<String>,
-    meet_time: Option<String>,
-    profile_picture_url: Option<String>,
+    id: String,
+    email: String,
+    club_name: String,
+    description: String,
+    meet_time: String,
+    profile_picture_url: String,
     categories: Vec<String>,
-    socials: Option<ClubSocialRequest>,
+    socials: ClubSocialRequest,
 }
 
 #[derive(AsChangeset)]
 #[diesel(table_name = clubs)]
 struct ClubEdit {
-    email: Option<String>,
-    club_name: Option<String>,
-    description: Option<String>,
-    meet_time: Option<String>,
-    profile_picture_url: Option<String>,
+    email: String,
+    club_name: String,
+    description: String,
+    meet_time: String,
+    profile_picture_url: String,
 }
 
 async fn edit_club(
@@ -116,13 +116,11 @@ async fn edit_club(
         .execute(conn)
         .await?;
 
-    if let Some(club_social) = req.socials {
-        update(club_socials::table)
-            .filter(club_socials::club_id.eq(club_id))
-            .set(club_social)
-            .execute(conn)
-            .await?;
-    }
+    update(club_socials::table)
+        .filter(club_socials::club_id.eq(club_id))
+        .set(req.socials)
+        .execute(conn)
+        .await?;
 
     Ok(())
 }
