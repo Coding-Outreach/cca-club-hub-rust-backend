@@ -1,19 +1,14 @@
 use crate::{
-    auth::{ExtractAuth},
+    auth::ExtractAuth,
     error::{AppError, AppResult},
     models::{Category, ClubCategory},
     schema::*,
     DbPool,
 };
-use axum::{
-    extract::{Path},
-    http::{StatusCode},
-    routing::post,
-    Extension, Json, Router,
-};
+use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
 use diesel::{delete, insert_into, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
-use serde::{Deserialize};
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
 #[derive(AsChangeset)]
@@ -48,7 +43,7 @@ struct ClubEdit {
     club_name: Option<String>,
     description: Option<String>,
     meet_time: Option<String>,
-    profile_picture_url: Option<String>, 
+    profile_picture_url: Option<String>,
 }
 
 async fn edit_club(
@@ -56,7 +51,7 @@ async fn edit_club(
     Json(req): Json<ClubRequest>,
     Path(club_id): Path<i32>,
     ExtractAuth(auth): ExtractAuth,
-) -> AppResult<Json<()>> {
+) -> AppResult<()> {
     auth.is_authorized(club_id)?;
 
     let conn = &mut pool.get().await?;
@@ -80,7 +75,12 @@ async fn edit_club(
             .map(|c| (c.category_name, c.id)),
     );
 
-    let new_categories: Vec<String> = req.categories.into_iter().collect::<HashSet<String>>().into_iter().collect();
+    let new_categories: Vec<String> = req
+        .categories
+        .into_iter()
+        .collect::<HashSet<String>>()
+        .into_iter()
+        .collect();
 
     for category in &new_categories {
         if !all_categories.contains_key(category) {
@@ -98,19 +98,23 @@ async fn edit_club(
         .unwrap_or(0)
         + 1;
 
-    let new_club_categories: Vec<ClubCategory> = new_categories.into_iter().map(|name| {
-        let id = club_categories_id;
-        club_categories_id += 1;
-        ClubCategory {
-            id,
-            club_id,
-            category_id: *all_categories.get(&name).unwrap(),
-        }
-    }).collect();
+    let new_club_categories: Vec<ClubCategory> = new_categories
+        .into_iter()
+        .map(|name| {
+            let id = club_categories_id;
+            club_categories_id += 1;
+            ClubCategory {
+                id,
+                club_id,
+                category_id: *all_categories.get(&name).unwrap(),
+            }
+        })
+        .collect();
 
     insert_into(club_categories::table)
         .values(new_club_categories)
-        .execute(conn).await?;
+        .execute(conn)
+        .await?;
 
     if let Some(club_social) = req.socials {
         update(club_socials::table)
@@ -120,7 +124,7 @@ async fn edit_club(
             .await?;
     }
 
-    Ok(Json(()))
+    Ok(())
 }
 
 pub fn app() -> Router {

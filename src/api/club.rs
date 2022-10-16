@@ -8,7 +8,7 @@ use axum::{extract::Path, http::StatusCode, routing::get, Extension, Json, Route
 use diesel::{prelude::*, BelongingToDsl};
 use diesel_async::RunQueryDsl;
 use serde::Serialize;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
