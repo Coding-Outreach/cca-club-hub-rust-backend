@@ -1,5 +1,5 @@
 use crate::{
-    auth::ExtractAuth,
+    auth::Auth,
     error::{AppError, AppResult},
     models::{Category, ClubCategory},
     schema::*,
@@ -50,7 +50,7 @@ async fn edit_club(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRequest>,
     Path(club_id): Path<i32>,
-    ExtractAuth(auth): ExtractAuth,
+    auth: Auth,
 ) -> AppResult<()> {
     auth.is_authorized(club_id)?;
 

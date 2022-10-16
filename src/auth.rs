@@ -70,13 +70,10 @@ pub fn generate_jwt(club_id: i32, exp: Duration) -> JwtResult<String> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ExtractAuth(pub Auth);
-
-#[derive(Debug, Clone)]
 pub struct Auth(Result<i32, ResponseStatusError>);
 
 #[async_trait]
-impl<B: Send> FromRequest<B> for ExtractAuth {
+impl<B: Send> FromRequest<B> for Auth {
     type Rejection = ();
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
@@ -97,7 +94,7 @@ impl<B: Send> FromRequest<B> for ExtractAuth {
             }
         }
 
-        Ok(Self(Auth(inner(req).await)))
+        Ok(Self(inner(req).await))
     }
 }
 
