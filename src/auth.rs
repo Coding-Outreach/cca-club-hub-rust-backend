@@ -48,9 +48,9 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub club_id: i32,
-    pub exp: u64,
+struct Claims {
+    club_id: i32,
+    exp: u64,
 }
 
 #[allow(unused_must_use)]

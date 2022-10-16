@@ -1,5 +1,5 @@
 use crate::{
-    auth::{Auth, Claims},
+    auth::{Auth},
     error::{AppError, AppResult},
     models::{Category, ClubCategory},
     schema::*,
@@ -12,11 +12,13 @@ use axum::{
     routing::post,
     Extension, Json, Router,
 };
-use diesel::{delete, dsl::max, insert_into, prelude::*, update, AsChangeset, ExpressionMethods};
+use diesel::{delete, insert_into, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
+#[derive(AsChangeset)]
+#[diesel(table_name = club_socials)]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubSocialRequest {
@@ -36,7 +38,7 @@ struct ClubRequest {
     meet_time: Option<String>,
     profile_picture_url: Option<String>,
     categories: Vec<String>,
-    socials: Vec<ClubSocialRequest>,
+    socials: Option<ClubSocialRequest>,
 }
 
 #[derive(AsChangeset)]
@@ -78,12 +80,7 @@ async fn edit_club(
             .map(|c| (c.category_name, c.id)),
     );
 
-    let new_categories = {
-        let seen = HashSet::new();
-        let new_categories = req.categories;
-        new_categories.retain(|name| seen.insert(name));
-        new_categories
-    };
+    let new_categories: Vec<String> = req.categories.into_iter().collect::<HashSet<String>>().into_iter().collect();
 
     for category in &new_categories {
         if !all_categories.contains_key(category) {
@@ -93,7 +90,7 @@ async fn edit_club(
 
     let mut club_categories_id = delete(club_categories::table)
         .filter(club_categories::club_id.eq(club_id))
-        .get_results(conn)
+        .get_results::<ClubCategory>(conn)
         .await?
         .into_iter()
         .map(|c| c.id)
@@ -115,19 +112,15 @@ async fn edit_club(
         .values(new_club_categories)
         .execute(conn).await?;
 
-    let club_socials_id = delete(club_socials::table)
-        .filter(club_socials::club_id.eq(club_id))
-        .get_results(conn)
-        .await?
-        .into_iter()
-        .map(|c| c.id)
-        .max()
-        .unwrap_or(0)
-        + 1;
+    if let Some(club_social) = req.socials {
+        update(club_socials::table)
+            .filter(club_socials::club_id.eq(club_id))
+            .set(club_social)
+            .execute(conn)
+            .await?;
+    }
 
-    
-
-    Err(AppError::from(StatusCode::ACCEPTED, "an error occured"))
+    Ok(StatusCode::ACCEPTED)
 }
 
 pub fn app() -> Router {
