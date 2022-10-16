@@ -19,8 +19,10 @@ diesel::table! {
     club_socials (id) {
         id -> Int4,
         club_id -> Int4,
-        social_name -> Varchar,
-        social_link -> Varchar,
+        website -> Varchar,
+        google_classroom -> Varchar,
+        discord -> Varchar,
+        instagram -> Varchar,
     }
 }
 

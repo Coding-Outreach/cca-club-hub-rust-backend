@@ -20,8 +20,10 @@ pub struct Club {
 pub struct ClubSocial {
     pub id: i32,
     pub club_id: i32,
-    pub social_name: String,
-    pub social_link: String,
+    pub website: String,
+    pub google_classroom: String,
+    pub discord: String,
+    pub instagram: String,
 }
 
 #[derive(Queryable, Identifiable)]

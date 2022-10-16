@@ -36,7 +36,7 @@ struct ClubRequest {
     meet_time: Option<String>,
     profile_picture_url: Option<String>,
     categories: Vec<String>,
-    socials: Option<ClubSocialRequest>,
+    socials: Vec<ClubSocialRequest>,
 }
 
 #[derive(AsChangeset)]
@@ -124,6 +124,8 @@ async fn edit_club(
         .max()
         .unwrap_or(0)
         + 1;
+
+    
 
     Err(AppError::from(StatusCode::ACCEPTED, "an error occured"))
 }
