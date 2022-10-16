@@ -6,7 +6,7 @@ use crate::{
     DbPool,
 };
 use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
-use diesel::{delete, insert_into, update, AsChangeset, ExpressionMethods};
+use diesel::{delete, prelude::*, insert_into, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -44,6 +44,13 @@ struct ClubEdit {
     description: String,
     meet_time: String,
     profile_picture_url: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Insertable)]
+#[diesel(table_name = club_categories)]
+struct NewClubCategory {
+    club_id: i32,
+    category_id: i32,
 }
 
 async fn edit_club(
@@ -88,23 +95,15 @@ async fn edit_club(
         }
     }
 
-    let mut club_categories_id = delete(club_categories::table)
+    delete(club_categories::table)
         .filter(club_categories::club_id.eq(club_id))
         .get_results::<ClubCategory>(conn)
-        .await?
-        .into_iter()
-        .map(|c| c.id)
-        .max()
-        .unwrap_or(0)
-        + 1;
+        .await?;
 
-    let new_club_categories: Vec<ClubCategory> = new_categories
+    let new_club_categories: Vec<NewClubCategory> = new_categories
         .into_iter()
         .map(|name| {
-            let id = club_categories_id;
-            club_categories_id += 1;
-            ClubCategory {
-                id,
+            NewClubCategory {
                 club_id,
                 category_id: *all_categories.get(&name).unwrap(),
             }

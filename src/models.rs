@@ -32,7 +32,7 @@ pub struct Category {
     pub category_name: String,
 }
 
-#[derive(Debug, Clone, Queryable, Identifiable, Associations, Insertable)]
+#[derive(Debug, Clone, Queryable, Identifiable, Associations)]
 #[diesel(belongs_to(Club))]
 #[diesel(belongs_to(Category))]
 #[diesel(table_name = club_categories)]
