@@ -1,5 +1,5 @@
 use crate::{
-    auth::{validate_jwt, Claims},
+    auth::{Auth, Claims},
     error::{AppError, AppResult},
     models::{Category, ClubCategory},
     schema::*,
@@ -7,7 +7,8 @@ use crate::{
 };
 use axum::{
     extract::Path,
-    http::{header::HeaderMap, StatusCode},
+    http::{StatusCode},
+    TypedHeader,
     routing::post,
     Extension, Json, Router,
 };
@@ -52,8 +53,9 @@ async fn edit_club(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRequest>,
     Path(club_id): Path<i32>,
+    TypedHeader(auth): TypedHeader<Auth>,
 ) -> AppResult<StatusCode> {
-    auth::is_authorized(club_id)?;
+    auth.is_authorized(club_id)?;
 
     let conn = &mut pool.get().await?;
 
