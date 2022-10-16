@@ -1,5 +1,7 @@
 use argon2::Argon2;
-use jsonwebtoken::{errors::Result as JwtResult, DecodingKey, EncodingKey, Header};
+use jsonwebtoken::{
+    errors::Result as JwtResult, DecodingKey, EncodingKey, Header, TokenData, Validation,
+};
 use password_hash::{
     self, rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
 };
@@ -41,9 +43,9 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    club_id: i32,
-    exp: u64,
+pub struct Claims {
+    pub club_id: i32,
+    pub exp: u64,
 }
 
 #[allow(unused_must_use)]
@@ -60,4 +62,8 @@ pub fn generate_jwt(club_id: i32, exp: Duration) -> JwtResult<String> {
         },
         &KEYS.encoding,
     )
+}
+
+pub fn validate_jwt(token: &str) -> JwtResult<TokenData<Claims>> {
+    jsonwebtoken::decode::<Claims>(token, &KEYS.decoding, &Validation::default())
 }
