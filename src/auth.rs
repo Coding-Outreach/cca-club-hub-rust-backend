@@ -81,14 +81,14 @@ impl<B: Send> FromRequest<B> for Auth {
             let TypedHeader(Authorization(bearer)) = req
                 .extract::<TypedHeader<Authorization<Bearer>>>()
                 .await
-                .map_err(|_| (StatusCode::BAD_REQUEST, "Missing credentials"))?;
+                .map_err(|_| (StatusCode::BAD_REQUEST, "missing credentials"))?;
             let claims =
                 jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Default::default())
-                    .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid token"))?
+                    .map_err(|_| (StatusCode::BAD_REQUEST, "invalid token"))?
                     .claims;
 
             if claims.exp < jsonwebtoken::get_current_timestamp() {
-                Err((StatusCode::UNAUTHORIZED, "Token expired"))?
+                Err((StatusCode::UNAUTHORIZED, "token expired"))?
             } else {
                 Ok(claims.club_id)
             }
@@ -105,7 +105,7 @@ impl Auth {
         } else {
             Err(AppError::from(
                 StatusCode::UNAUTHORIZED,
-                "Wrong credentials",
+                "wrong credentials",
             ))
         }
     }
