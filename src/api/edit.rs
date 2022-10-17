@@ -29,6 +29,7 @@ struct ClubRequest {
     email: String,
     club_name: String,
     description: Option<String>,
+    about: Option<String>,
     meet_time: Option<String>,
     profile_picture_url: String,
     categories: Vec<String>,
@@ -42,6 +43,7 @@ struct ClubEdit {
     email: String,
     club_name: String,
     description: Option<String>,
+    about: Option<String>,
     meet_time: Option<String>,
     profile_picture_url: String,
 }
@@ -69,6 +71,7 @@ async fn edit_club(
             email: req.email,
             meet_time: req.meet_time,
             description: req.description,
+            about: req.about,
             profile_picture_url: req.profile_picture_url,
         })
         .execute(conn)
