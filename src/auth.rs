@@ -48,6 +48,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Claims {
     club_id: i32,
     exp: u64,
