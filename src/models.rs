@@ -9,6 +9,7 @@ pub struct Club {
     pub password_hash: String,
     pub club_name: String,
     pub description: Option<String>,
+    pub about: Option<String>,
     pub meet_time: Option<String>,
     pub profile_picture_url: String,
     pub featured: bool,
