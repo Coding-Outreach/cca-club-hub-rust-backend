@@ -64,6 +64,12 @@ async fn register(
         featured: bool,
     }
 
+    #[derive(Insertable)]
+    #[diesel(table_name = club_socials)]
+    struct NewClubSocial {
+        club_id: i32,
+    }
+
     let conn = &mut pool.get().await?;
 
     let new_id = diesel::insert_into(clubs::table)
@@ -85,6 +91,11 @@ async fn register(
         .optional()?;
 
     if let Some(new_id) = new_id {
+        diesel::insert_into(club_socials::table)
+            .values(NewClubSocial { club_id: new_id })
+            .execute(conn)
+            .await?;
+
         Ok(Json(ClubAuthorizedResponse::from_club_id(new_id)?))
     } else {
         Err(AppError::from(
