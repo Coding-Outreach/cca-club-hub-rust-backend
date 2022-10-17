@@ -12,37 +12,37 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
 #[derive(AsChangeset)]
+#[changeset_options(treat_none_as_null="true")]
 #[diesel(table_name = club_socials)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubSocialRequest {
-    website: String,
-    google_classroom: String,
-    discord: String,
-    instagram: String,
+    website: Option<String>,
+    google_classroom: Option<String>,
+    discord: Option<String>,
+    instagram: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubRequest {
-    #[allow(dead_code)]
-    id: String,
     email: String,
     club_name: String,
-    description: String,
-    meet_time: String,
+    description: Option<String>,
+    meet_time: Option<String>,
     profile_picture_url: String,
     categories: Vec<String>,
     socials: ClubSocialRequest,
 }
 
 #[derive(AsChangeset)]
+#[changeset_options(treat_none_as_null="true")]
 #[diesel(table_name = clubs)]
 struct ClubEdit {
     email: String,
     club_name: String,
-    description: String,
-    meet_time: String,
+    description: Option<String>,
+    meet_time: Option<String>,
     profile_picture_url: String,
 }
 
