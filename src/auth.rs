@@ -88,7 +88,7 @@ impl<B: Send> FromRequest<B> for Auth {
                     .claims;
 
             if claims.exp < jsonwebtoken::get_current_timestamp() {
-                Err((StatusCode::UNAUTHORIZED, "token expired"))?
+                Err((StatusCode::UNAUTHORIZED, "token expired").into())
             } else {
                 Ok(claims.club_id)
             }
