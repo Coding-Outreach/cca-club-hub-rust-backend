@@ -33,11 +33,11 @@ jobs:
         if: steps.check_permissions.outputs.has-permission
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets
+          args: --all-features --all-targets -- -D warnings
 
       - name: Clippy without annotations
         if: ${{ !steps.check_permissions.outputs.has-permission }}
-        run: cargo clippy --all-features --all-targets
+        run: cargo clippy --all-features --all-targets -- -D warnings
 
   test:
     runs-on: ubuntu-latest
