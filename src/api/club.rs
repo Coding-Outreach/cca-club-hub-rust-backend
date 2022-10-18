@@ -106,7 +106,7 @@ async fn load_clubs(
         .await?
         .grouped_by(&clubs);
 
-    Ok(clubs
+    clubs
         .into_iter()
         .zip(club_category_ids)
         .zip(club_socials)
@@ -118,7 +118,7 @@ async fn load_clubs(
                 socials.pop(),
             )
         })
-        .collect::<Result<_, _>>()?)
+        .collect::<Result<_, _>>()
 }
 
 async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResponse>>> {
