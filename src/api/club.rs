@@ -5,7 +5,7 @@ use crate::{
     DbPool,
 };
 use axum::{extract::Path, http::StatusCode, routing::get, Extension, Json, Router};
-use diesel::{prelude::*, BelongingToDsl};
+use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -85,11 +85,10 @@ impl ClubResponse {
     }
 }
 
-async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResponse>>> {
-    let conn = &mut pool.get().await?;
-
-    let clubs = clubs::table.load::<Club>(conn).await?;
-
+async fn load_clubs(
+    conn: &mut diesel_async::pg::AsyncPgConnection,
+    clubs: Vec<Club>,
+) -> AppResult<Vec<ClubResponse>> {
     let all_categories = HashMap::<_, _>::from_iter(
         categories::table
             .load::<Category>(conn)
@@ -107,21 +106,38 @@ async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResp
         .await?
         .grouped_by(&clubs);
 
-    Ok(Json(
-        clubs
-            .into_iter()
-            .zip(club_category_ids)
-            .zip(club_socials)
-            .map(|((club, category_ids), mut socials)| {
-                ClubResponse::from(
-                    club,
-                    &all_categories,
-                    category_ids.into_iter().map(|c| c.category_id),
-                    socials.pop(),
-                )
-            })
-            .collect::<Result<_, _>>()?,
-    ))
+    Ok(clubs
+        .into_iter()
+        .zip(club_category_ids)
+        .zip(club_socials)
+        .map(|((club, category_ids), mut socials)| {
+            ClubResponse::from(
+                club,
+                &all_categories,
+                category_ids.into_iter().map(|c| c.category_id),
+                socials.pop(),
+            )
+        })
+        .collect::<Result<_, _>>()?)
+}
+
+async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResponse>>> {
+    let conn = &mut pool.get().await?;
+
+    let clubs = clubs::table.load::<Club>(conn).await?;
+
+    Ok(Json(load_clubs(conn, clubs).await?))
+}
+
+async fn list_featured(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResponse>>> {
+    let conn = &mut pool.get().await?;
+
+    let clubs = clubs::table
+        .filter(clubs::featured.eq(true))
+        .load::<Club>(conn)
+        .await?;
+
+    Ok(Json(load_clubs(conn, clubs).await?))
 }
 
 async fn info(
@@ -137,28 +153,8 @@ async fn info(
         .optional()?
         .ok_or_else(|| AppError::from(StatusCode::NOT_FOUND, "the club does not exist"))?;
 
-    let club_category_ids = ClubCategory::belonging_to(&club)
-        .select(club_categories::id)
-        .load::<i32>(conn)
-        .await?;
-    let all_categories = HashMap::<_, _>::from_iter(
-        categories::table
-            .filter(categories::dsl::id.eq_any(club_category_ids.clone()))
-            .load::<Category>(conn)
-            .await?
-            .into_iter()
-            .map(|c| (c.id, c.category_name)),
-    );
-
-    let mut club_socials = ClubSocial::belonging_to(&club)
-        .load::<ClubSocial>(conn)
-        .await?;
-
-    Ok(Json(ClubResponse::from(
-        club,
-        &all_categories,
-        club_category_ids,
-        club_socials.pop(),
+    Ok(Json(load_clubs(conn, vec![club]).await?.pop().ok_or_else(
+        || anyhow::anyhow!("`load_clubs` should return one club"),
     )?))
 }
 
@@ -178,6 +174,7 @@ async fn list_categories(Extension(pool): Extension<DbPool>) -> AppResult<Json<V
 pub fn app() -> Router {
     Router::new()
         .route("/list", get(list))
+        .route("/list/featured", get(list_featured))
         .route("/info/:club_id", get(info))
         .route("/categories/list", get(list_categories))
 }
