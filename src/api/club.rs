@@ -6,9 +6,8 @@ use crate::{
 };
 use axum::{extract::Path, http::StatusCode, routing::get, Extension, Json, Router};
 use diesel::prelude::*;
-use diesel_async::RunQueryDsl;
+use diesel_async::{pg::AsyncPgConnection, RunQueryDsl};
 use serde::Serialize;
-use std::collections::HashMap;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,14 +56,21 @@ struct ClubResponse {
     socials: ClubSocialResponse,
 }
 
-impl ClubResponse {
-    fn from(
-        club: Club,
-        all_categories: &HashMap<i32, String>,
-        category_ids: impl IntoIterator<Item = i32>,
-        socials: Option<ClubSocial>,
-    ) -> AppResult<ClubResponse> {
-        Ok(ClubResponse {
+async fn load_clubs(
+    conn: &mut AsyncPgConnection,
+    clubs: Vec<(Club, Option<ClubSocial>)>,
+) -> AppResult<Vec<ClubResponse>> {
+    let categories = club_categories::table
+        .inner_join(categories::table)
+        .filter(club_categories::club_id.eq_any(clubs.iter().map(|c| c.0.id)))
+        .load::<(ClubCategory, Category)>(conn)
+        .await?
+        .grouped_by(&clubs.iter().map(|c| &c.0).collect::<Vec<_>>());
+
+    Ok(clubs
+        .into_iter()
+        .zip(categories)
+        .map(|((club, socials), categories)| ClubResponse {
             id: club.username.to_string(),
             email: club.email.clone(),
             club_name: club.club_name,
@@ -73,58 +79,19 @@ impl ClubResponse {
             meet_time: club.meet_time,
             profile_picture_url: club.profile_picture_url,
             featured: club.featured,
-            categories: category_ids
-                .into_iter()
-                .map(|c| all_categories.get(&c).cloned())
-                .collect::<Option<_>>()
-                .ok_or_else(|| {
-                    anyhow::anyhow!("database is in an invalid state: invalid category_id")
-                })?,
+            categories: categories.into_iter().map(|c| c.1.category_name).collect(),
             socials: ClubSocialResponse::from(club.email, socials),
         })
-    }
-}
-
-async fn load_clubs(
-    conn: &mut diesel_async::pg::AsyncPgConnection,
-    clubs: Vec<Club>,
-) -> AppResult<Vec<ClubResponse>> {
-    let all_categories = HashMap::<_, _>::from_iter(
-        categories::table
-            .load::<Category>(conn)
-            .await?
-            .into_iter()
-            .map(|c| (c.id, c.category_name)),
-    );
-    let club_category_ids = ClubCategory::belonging_to(&clubs)
-        .load::<ClubCategory>(conn)
-        .await?
-        .grouped_by(&clubs);
-
-    let club_socials = ClubSocial::belonging_to(&clubs)
-        .load::<ClubSocial>(conn)
-        .await?
-        .grouped_by(&clubs);
-
-    clubs
-        .into_iter()
-        .zip(club_category_ids)
-        .zip(club_socials)
-        .map(|((club, category_ids), mut socials)| {
-            ClubResponse::from(
-                club,
-                &all_categories,
-                category_ids.into_iter().map(|c| c.category_id),
-                socials.pop(),
-            )
-        })
-        .collect::<Result<_, _>>()
+        .collect())
 }
 
 async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResponse>>> {
     let conn = &mut pool.get().await?;
 
-    let clubs = clubs::table.load::<Club>(conn).await?;
+    let clubs = clubs::table
+        .left_join(club_socials::table)
+        .load(conn)
+        .await?;
 
     Ok(Json(load_clubs(conn, clubs).await?))
 }
@@ -133,8 +100,9 @@ async fn list_featured(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec
     let conn = &mut pool.get().await?;
 
     let clubs = clubs::table
+        .left_join(club_socials::table)
         .filter(clubs::featured.eq(true))
-        .load::<Club>(conn)
+        .load(conn)
         .await?;
 
     Ok(Json(load_clubs(conn, clubs).await?))
@@ -147,8 +115,9 @@ async fn info(
     let conn = &mut pool.get().await?;
 
     let club = clubs::table
+        .left_join(club_socials::table)
         .filter(clubs::username.eq(club_id))
-        .first::<Club>(conn)
+        .first(conn)
         .await
         .optional()?
         .ok_or_else(|| AppError::from(StatusCode::NOT_FOUND, "the club does not exist"))?;
