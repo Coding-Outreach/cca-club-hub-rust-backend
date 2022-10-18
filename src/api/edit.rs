@@ -58,10 +58,10 @@ struct NewClubCategory {
 async fn edit_club(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRequest>,
-    Path(club_id): Path<i32>,
+    Path(club_id): Path<String>,
     auth: Auth,
 ) -> AppResult<()> {
-    auth.is_authorized(club_id)?;
+    let club_id = auth.into_authorized(&club_id)?.club_db_id;
 
     let conn = &mut pool.get().await?;
 

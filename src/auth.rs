@@ -1,4 +1,7 @@
-use crate::error::{AppError, AppResult, ResponseStatusError};
+use crate::{
+    error::{AppError, AppResult, ResponseStatusError},
+    models::Club,
+};
 use argon2::Argon2;
 use axum::{
     async_trait,
@@ -47,11 +50,12 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Claims {
-    club_id: i32,
-    exp: u64,
+pub struct Claims {
+    pub club_id: String,
+    pub club_db_id: i32,
+    pub exp: u64,
 }
 
 #[allow(unused_must_use)]
@@ -59,11 +63,12 @@ pub fn ensure_jwt_secret_is_valid() {
     KEYS.deref();
 }
 
-pub fn generate_jwt(club_id: i32, exp: Duration) -> JwtResult<String> {
+pub fn generate_jwt(club: &Club, exp: Duration) -> JwtResult<String> {
     jsonwebtoken::encode(
         &Default::default(),
         &Claims {
-            club_id,
+            club_id: club.username.clone(),
+            club_db_id: club.id,
             exp: jsonwebtoken::get_current_timestamp() + exp.as_secs(),
         },
         &KEYS.encoding,
@@ -71,14 +76,14 @@ pub fn generate_jwt(club_id: i32, exp: Duration) -> JwtResult<String> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Auth(Result<i32, ResponseStatusError>);
+pub struct Auth(Result<Claims, ResponseStatusError>);
 
 #[async_trait]
 impl<B: Send> FromRequest<B> for Auth {
     type Rejection = ();
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        async fn inner<B: Send>(req: &mut RequestParts<B>) -> Result<i32, ResponseStatusError> {
+        async fn inner<B: Send>(req: &mut RequestParts<B>) -> Result<Claims, ResponseStatusError> {
             let TypedHeader(Authorization(bearer)) = req
                 .extract::<TypedHeader<Authorization<Bearer>>>()
                 .await
@@ -91,7 +96,7 @@ impl<B: Send> FromRequest<B> for Auth {
             if claims.exp < jsonwebtoken::get_current_timestamp() {
                 Err((StatusCode::UNAUTHORIZED, "token expired").into())
             } else {
-                Ok(claims.club_id)
+                Ok(claims)
             }
         }
 
@@ -100,14 +105,13 @@ impl<B: Send> FromRequest<B> for Auth {
 }
 
 impl Auth {
-    pub fn is_authorized(self, club_id: i32) -> AppResult<()> {
-        if self.0? == club_id {
-            Ok(())
-        } else {
-            Err(AppError::from(
+    pub fn into_authorized(self, club_id: &str) -> AppResult<Claims> {
+        match self.0? {
+            c if c.club_id == club_id => Ok(c),
+            _ => Err(AppError::from(
                 StatusCode::UNAUTHORIZED,
                 "wrong credentials",
-            ))
+            )),
         }
     }
 }

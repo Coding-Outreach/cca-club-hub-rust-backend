@@ -1,6 +1,7 @@
 use crate::{
     auth,
     error::{AppError, AppResult},
+    models::Club,
     schema::*,
     DbPool,
 };
@@ -29,16 +30,14 @@ struct ClubLoginRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubAuthorizedResponse {
-    pub club_id: i32,
     pub jwt_token: String,
 }
 
 impl ClubAuthorizedResponse {
-    fn from_club_id(club_id: i32) -> anyhow::Result<ClubAuthorizedResponse> {
+    fn from_club(club: &Club) -> anyhow::Result<ClubAuthorizedResponse> {
         Ok(ClubAuthorizedResponse {
-            club_id,
             // expires after one day
-            jwt_token: auth::generate_jwt(club_id, Duration::from_secs(24 * 60 * 60))?,
+            jwt_token: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
         })
     }
 }
@@ -72,7 +71,7 @@ async fn register(
 
     let conn = &mut pool.get().await?;
 
-    let new_id = diesel::insert_into(clubs::table)
+    let new_club = diesel::insert_into(clubs::table)
         .values(NewClub {
             username: req.username,
             email: req.email,
@@ -85,24 +84,28 @@ async fn register(
         })
         .on_conflict(clubs::username)
         .do_nothing()
-        .returning(clubs::id)
-        .get_result(conn)
+        .get_result::<Club>(conn)
         .await
         .optional()?;
 
-    if let Some(new_id) = new_id {
-        diesel::insert_into(club_socials::table)
-            .values(NewClubSocial { club_id: new_id })
-            .execute(conn)
-            .await?;
+    let new_club = match new_club {
+        Some(x) => x,
+        None => {
+            return Err(AppError::from(
+                StatusCode::CONFLICT,
+                "username has been taken",
+            ));
+        }
+    };
 
-        Ok(Json(ClubAuthorizedResponse::from_club_id(new_id)?))
-    } else {
-        Err(AppError::from(
-            StatusCode::CONFLICT,
-            "username has been taken",
-        ))
-    }
+    diesel::insert_into(club_socials::table)
+        .values(NewClubSocial {
+            club_id: new_club.id,
+        })
+        .execute(conn)
+        .await?;
+
+    Ok(Json(ClubAuthorizedResponse::from_club(&new_club)?))
 }
 
 async fn login(
@@ -113,15 +116,14 @@ async fn login(
 
     let conn = &mut pool.get().await?;
 
-    if let Some((club_id, club_password_hash)) = clubs
-        .select((id, password_hash))
+    if let Some(club) = clubs
         .filter(username.eq(req.username))
-        .first::<(i32, String)>(conn)
+        .first::<Club>(conn)
         .await
         .optional()?
     {
-        if auth::verify_password(req.password, club_password_hash)? {
-            return Ok(Json(ClubAuthorizedResponse::from_club_id(club_id)?));
+        if auth::verify_password(req.password, &club.password_hash)? {
+            return Ok(Json(ClubAuthorizedResponse::from_club(&club)?));
         }
     }
     Err(AppError::from(

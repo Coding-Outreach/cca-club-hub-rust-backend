@@ -65,7 +65,7 @@ impl ClubResponse {
         socials: Option<ClubSocial>,
     ) -> AppResult<ClubResponse> {
         Ok(ClubResponse {
-            id: club.id.to_string(),
+            id: club.username.to_string(),
             email: club.email.clone(),
             club_name: club.club_name,
             description: club.description,
@@ -126,12 +126,12 @@ async fn list(Extension(pool): Extension<DbPool>) -> AppResult<Json<Vec<ClubResp
 
 async fn info(
     Extension(pool): Extension<DbPool>,
-    Path(club_id): Path<i32>,
+    Path(club_id): Path<String>,
 ) -> AppResult<Json<ClubResponse>> {
     let conn = &mut pool.get().await?;
 
     let club = clubs::table
-        .find(club_id)
+        .filter(clubs::username.eq(club_id))
         .first::<Club>(conn)
         .await
         .optional()?
