@@ -1,6 +1,7 @@
 use crate::{
     auth,
     error::{AppError, AppResult},
+    models::Club,
     schema::*,
     DbPool,
 };
@@ -9,7 +10,6 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use crate::models::Club;
 
 #[derive(Deserialize)]
 struct ClubRegisterRequest {
@@ -99,7 +99,9 @@ async fn register(
     };
 
     diesel::insert_into(club_socials::table)
-        .values(NewClubSocial { club_id: new_club.id })
+        .values(NewClubSocial {
+            club_id: new_club.id,
+        })
         .execute(conn)
         .await?;
 
