@@ -8,8 +8,8 @@ use std::env::var;
 
 lazy_static::lazy_static! {
     pub static ref EMAIL_USERNAME: String = var("EMAIL_USERNAME").expect("email username must be set for password reset responses");
-    pub static ref EMAIL_PASSWORD: String = var("EMAIL_PASSWORD").expect("email access password must be set for password reset responses");
-    pub static ref CREDS: Credentials = Credentials::new(EMAIL_USERNAME.to_string(), EMAIL_PASSWORD.to_string());
+    static ref EMAIL_PASSWORD: String = var("EMAIL_PASSWORD").expect("email access password must be set for password reset responses");
+    static ref CREDS: Credentials = Credentials::new(EMAIL_USERNAME.to_string(), EMAIL_PASSWORD.to_string());
 }
 
 pub async fn sanity_check() {
