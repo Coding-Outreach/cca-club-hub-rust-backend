@@ -50,7 +50,7 @@ async fn password_request(
 
         let email = Message::builder()
             .from(
-                format!("server overlords <{}>", EMAIL_USERNAME.to_string())
+                format!("server overlords <{}>", *EMAIL_USERNAME)
                     .parse()
                     .unwrap(),
             )

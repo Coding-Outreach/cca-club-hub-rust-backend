@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
 }
 
 pub async fn sanity_check() {
-    let name = format!("sanity check <{}>", EMAIL_USERNAME.to_string());
+    let name = format!("sanity check <{}>", *EMAIL_USERNAME);
     let email = Message::builder()
         .from(name.parse().unwrap())
         .to(name.parse().unwrap())
