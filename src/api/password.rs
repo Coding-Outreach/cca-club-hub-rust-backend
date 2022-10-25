@@ -1,15 +1,15 @@
 use crate::{
     auth,
-    email::{self, EMAIL_USERNAME},
+    email::{self, EMAIL_USERNAME, HOST},
     error::{AppError, AppResult},
     models::Club,
     schema::*,
     DbPool,
 };
 use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
-use diesel::{query_dsl::methods::FilterDsl, update, ExpressionMethods, OptionalExtension};
+use diesel::{update, ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::RunQueryDsl;
-use lettre::Message;
+use lettre::{message::Mailbox, Address, Message};
 use nanoid::nanoid;
 use serde::Deserialize;
 use std::{
@@ -33,6 +33,9 @@ struct NewPwdRequest {
     password: String,
 }
 
+// 1 hour
+const RESET_ALLOWED_TIME: Duration = Duration::from_secs(60 * 60);
+
 async fn password_request(
     Extension(pool): Extension<DbPool>,
     Extension(resets): Extension<Arc<Mutex<Resets>>>,
@@ -47,18 +50,36 @@ async fn password_request(
         .optional()?
     {
         let uid = nanoid!();
+        let link = format!("{}/api/password/{}", *HOST, uid);
+        let body = format!(
+            r"Hi {},
+
+We have received a request to change your CCA Club Hub password. To reset your password, please click the below link within the next {} minutes (or paste it into your browser if clicking is not working):
+
+{}
+
+If you did not request this password reset you can disregard this message and your password will remain unchanged.
+
+Thanks,
+The CCA Club Hub Team.",
+            club.username,
+            RESET_ALLOWED_TIME.as_secs() / 60,
+            link
+        );
+
+        let destination_address = club
+            .email
+            .parse::<Address>()
+            .map_err(|_| AppError::from(StatusCode::BAD_REQUEST, "invalid email"))?;
 
         let email = Message::builder()
-            .from(
-                format!("server overlords <{}>", *EMAIL_USERNAME)
-                    .parse()
-                    .unwrap(),
-            )
-            .to(format!("{} <{}>", club.username, club.email)
-                .parse()
-                .unwrap())
+            .from(Mailbox::new(
+                Some("apathetic programmers".to_string()),
+                EMAIL_USERNAME.parse::<Address>().unwrap(),
+            ))
+            .to(Mailbox::new(Some(club.username), destination_address))
             .subject("CCA Club Hub Password Reset")
-            .body(format!("http://localhost:8080/api/password/{}", uid))
+            .body(body)
             .unwrap();
 
         match email::send(email).await {
@@ -88,7 +109,7 @@ async fn password_reset(
 ) -> AppResult<()> {
     let mut resets = resets.lock().await;
     if let Some((instant, club_id)) = resets.0.get(&id) {
-        if instant.elapsed() > Duration::from_secs(60 * 60) {
+        if instant.elapsed() > RESET_ALLOWED_TIME {
             resets.0.remove(&id);
             return Err(AppError::from(
                 StatusCode::UNAUTHORIZED,
@@ -98,8 +119,8 @@ async fn password_reset(
 
         let conn = &mut pool.get().await?;
 
-        update(clubs::table)
-            .filter(clubs::id.eq(club_id))
+        update(clubs::table.find(club_id))
+            //.filter(clubs::id.eq(club_id))
             .set(clubs::password_hash.eq(auth::hash_password(req.password)?))
             .execute(conn)
             .await?;

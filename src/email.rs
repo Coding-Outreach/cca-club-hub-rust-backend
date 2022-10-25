@@ -10,6 +10,8 @@ lazy_static::lazy_static! {
     pub static ref EMAIL_USERNAME: String = var("EMAIL_USERNAME").expect("email username must be set for password reset responses");
     static ref EMAIL_PASSWORD: String = var("EMAIL_PASSWORD").expect("email access password must be set for password reset responses");
     static ref CREDS: Credentials = Credentials::new(EMAIL_USERNAME.to_string(), EMAIL_PASSWORD.to_string());
+    // maybe figure out a better place to the HOST var
+    pub static ref HOST: String = var("HOST").expect("HOST must be set for correct password reset urls to be generated");
 }
 
 pub async fn sanity_check() {
