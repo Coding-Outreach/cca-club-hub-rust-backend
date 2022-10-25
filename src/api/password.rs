@@ -120,7 +120,6 @@ async fn password_reset(
         let conn = &mut pool.get().await?;
 
         update(clubs::table.find(club_id))
-            //.filter(clubs::id.eq(club_id))
             .set(clubs::password_hash.eq(auth::hash_password(req.password)?))
             .execute(conn)
             .await?;
