@@ -104,13 +104,13 @@ The CCA Club Hub Team.",
 async fn password_reset(
     Extension(pool): Extension<DbPool>,
     Extension(resets): Extension<Arc<Mutex<Resets>>>,
-    Path(id): Path<String>,
+    Path(uid): Path<String>,
     Json(req): Json<NewPwdRequest>,
 ) -> AppResult<()> {
     let mut resets = resets.lock().await;
-    if let Some((instant, club_id)) = resets.0.get(&id) {
+    if let Some((instant, club_id)) = resets.0.get(&uid) {
         if instant.elapsed() > RESET_ALLOWED_TIME {
-            resets.0.remove(&id);
+            resets.0.remove(&uid);
             return Err(AppError::from(
                 StatusCode::UNAUTHORIZED,
                 "password reset expired",
@@ -125,7 +125,7 @@ async fn password_reset(
             .execute(conn)
             .await?;
 
-        resets.0.remove(&id);
+        resets.0.remove(&uid);
 
         Ok(())
     } else {
@@ -141,6 +141,6 @@ pub fn app() -> Router {
 
     Router::new()
         .route("/reset", post(password_request))
-        .route("/:id", post(password_reset))
+        .route("/:uid", post(password_reset))
         .layer(Extension(shared_resets))
 }
