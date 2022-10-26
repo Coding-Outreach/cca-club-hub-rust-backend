@@ -1,6 +1,6 @@
 use crate::{
     auth,
-    email::{self, EMAIL_USERNAME, HOST},
+    email::{self, EMAIL_ADDRESS, HOST},
     error::{AppError, AppResult},
     models::Club,
     schema::*,
@@ -75,7 +75,7 @@ The CCA Club Hub Team.",
         let email = Message::builder()
             .from(Mailbox::new(
                 Some("apathetic programmers".to_string()),
-                EMAIL_USERNAME.parse::<Address>().unwrap(),
+                EMAIL_ADDRESS.clone(),
             ))
             .to(Mailbox::new(Some(club.username), destination_address))
             .subject("CCA Club Hub Password Reset")
