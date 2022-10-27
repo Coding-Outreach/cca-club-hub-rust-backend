@@ -87,7 +87,7 @@ impl<B: Send> FromRequest<B> for Auth {
             let TypedHeader(Authorization(bearer)) = req
                 .extract::<TypedHeader<Authorization<Bearer>>>()
                 .await
-                .map_err(|_| (StatusCode::BAD_REQUEST, "missing credentials"))?;
+                .map_err(|_| (StatusCode::UNAUTHORIZED, "missing credentials"))?;
             let claims =
                 jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Default::default())
                     .map_err(|_| (StatusCode::BAD_REQUEST, "invalid token"))?

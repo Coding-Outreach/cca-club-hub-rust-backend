@@ -26,11 +26,10 @@ struct ClubSocialRequest {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubRequest {
-    email: String,
     club_name: String,
-    description: Option<String>,
-    about: Option<String>,
-    meet_time: Option<String>,
+    description: String,
+    about: String,
+    meet_time: String,
     profile_picture_url: String,
     categories: Vec<String>,
     socials: ClubSocialRequest,
@@ -40,11 +39,10 @@ struct ClubRequest {
 #[diesel(treat_none_as_null = true)]
 #[diesel(table_name = clubs)]
 struct ClubEdit {
-    email: String,
     club_name: String,
-    description: Option<String>,
-    about: Option<String>,
-    meet_time: Option<String>,
+    description: String,
+    about: String,
+    meet_time: String,
     profile_picture_url: String,
 }
 
@@ -68,7 +66,6 @@ async fn edit_club(
     update(clubs::table)
         .set(ClubEdit {
             club_name: req.club_name,
-            email: req.email,
             meet_time: req.meet_time,
             description: req.description,
             about: req.about,
