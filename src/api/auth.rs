@@ -29,15 +29,16 @@ struct ClubLoginRequest {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ClubAuthorizedResponse(String);
+struct ClubAuthorizedResponse {
+    jwt: String,
+}
 
 impl ClubAuthorizedResponse {
     fn from_club(club: &Club) -> anyhow::Result<ClubAuthorizedResponse> {
         // expires after one day
-        Ok(ClubAuthorizedResponse(auth::generate_jwt(
-            club,
-            Duration::from_secs(24 * 60 * 60),
-        )?))
+        Ok(ClubAuthorizedResponse {
+            jwt: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
+        })
     }
 }
 
@@ -48,7 +49,7 @@ const DEFAULT_PROFILE_PICTURE_URL: &str = "";
 async fn register(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRegisterRequest>,
-) -> AppResult<String> {
+) -> AppResult<Json<ClubAuthorizedResponse>> {
     #[derive(Insertable)]
     #[diesel(table_name = clubs)]
     struct NewClub {
@@ -104,13 +105,13 @@ async fn register(
         .execute(conn)
         .await?;
 
-    Ok(ClubAuthorizedResponse::from_club(&new_club)?.0)
+    Ok(Json(ClubAuthorizedResponse::from_club(&new_club)?))
 }
 
 async fn login(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubLoginRequest>,
-) -> AppResult<String> {
+) -> AppResult<Json<ClubAuthorizedResponse>> {
     use crate::schema::clubs::dsl::*;
 
     let conn = &mut pool.get().await?;
@@ -122,7 +123,7 @@ async fn login(
         .optional()?
     {
         if auth::verify_password(req.password, &club.password_hash)? {
-            return Ok(ClubAuthorizedResponse::from_club(&club)?.0);
+            return Ok(Json(ClubAuthorizedResponse::from_club(&club)?));
         }
     }
     Err(AppError::from(

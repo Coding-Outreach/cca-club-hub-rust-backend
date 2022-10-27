@@ -1,4 +1,5 @@
 use lettre::{
+    message::Mailbox,
     transport::smtp::{
         authentication::Credentials, response::Response as LettreResponse, Error as LettreError,
     },
@@ -16,17 +17,15 @@ lazy_static::lazy_static! {
 }
 
 pub async fn sanity_check() {
-    let name = format!("sanity check <{}>", *EMAIL_USERNAME);
+    let mbox = Mailbox::new(None, EMAIL_ADDRESS.clone());
     let email = Message::builder()
-        .from(name.parse().unwrap())
-        .to(name.parse().unwrap())
+        .to(mbox)
         .subject("Ensuring provided email is valid")
         .body("SANITY CHECK".to_string())
         .unwrap();
 
-    match send(email).await {
-        Ok(_) => {}
-        Err(e) => panic!("email sanity check failed with {:?}", e),
+    if let Err(e) = send(email).await {
+        panic!("email sanity check failed with {:?}", e);
     }
 }
 
