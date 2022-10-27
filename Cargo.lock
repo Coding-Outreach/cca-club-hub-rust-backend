@@ -171,6 +171,7 @@ dependencies = [
  "password-hash",
  "serde",
  "tokio",
+ "tower-http",
 ]
 
 [[package]]

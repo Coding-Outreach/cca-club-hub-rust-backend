@@ -20,3 +20,4 @@ lazy_static = "1.4.0"
 password-hash = { version = "0.4.2", features = ["std"] }
 serde = { version = "1.0.145", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["rt", "macros"] }
+tower-http = { version = "0.3.4", features = ["cors"] }
