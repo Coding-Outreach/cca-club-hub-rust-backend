@@ -30,14 +30,14 @@ struct ClubLoginRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubAuthorizedResponse {
-    pub jwt_token: String,
+    pub token: String,
 }
 
 impl ClubAuthorizedResponse {
     fn from_club(club: &Club) -> anyhow::Result<ClubAuthorizedResponse> {
         Ok(ClubAuthorizedResponse {
             // expires after one day
-            jwt_token: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
+            token: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
         })
     }
 }
