@@ -33,9 +33,9 @@ diesel::table! {
         email -> Varchar,
         password_hash -> Varchar,
         club_name -> Varchar,
-        description -> Nullable<Varchar>,
-        about -> Nullable<Text>,
-        meet_time -> Nullable<Varchar>,
+        description -> Varchar,
+        about -> Text,
+        meet_time -> Varchar,
         profile_picture_url -> Varchar,
         featured -> Bool,
     }

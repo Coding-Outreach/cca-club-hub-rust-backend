@@ -17,8 +17,8 @@ struct ClubRegisterRequest {
     pub email: String,
     pub password: String,
     pub name: String,
-    pub description: Option<String>,
-    pub meet_time: Option<String>,
+    pub description: String,
+    pub meet_time: String,
 }
 
 #[derive(Deserialize)]
@@ -57,8 +57,8 @@ async fn register(
         email: String,
         password_hash: String,
         club_name: String,
-        description: Option<String>,
-        meet_time: Option<String>,
+        description: String,
+        meet_time: String,
         profile_picture_url: String,
         featured: bool,
     }

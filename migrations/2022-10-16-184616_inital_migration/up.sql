@@ -6,9 +6,9 @@ CREATE TABLE clubs
     email               VARCHAR(200) NOT NULL,
     password_hash       VARCHAR(200) NOT NULL,
     club_name           VARCHAR(200) NOT NULL,
-    description         VARCHAR(500),
-    about               TEXT,
-    meet_time           VARCHAR(500),
+    description         VARCHAR(500) NOT NULL,
+    about               TEXT         NOT NULL,
+    meet_time           VARCHAR(500) NOT NULL ,
     profile_picture_url VARCHAR(200) NOT NULL,
     featured            BOOLEAN      NOT NULL
 );

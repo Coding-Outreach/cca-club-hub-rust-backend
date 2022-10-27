@@ -28,9 +28,9 @@ struct ClubSocialRequest {
 struct ClubRequest {
     email: String,
     club_name: String,
-    description: Option<String>,
-    about: Option<String>,
-    meet_time: Option<String>,
+    description: String,
+    about: String,
+    meet_time: String,
     profile_picture_url: String,
     categories: Vec<String>,
     socials: ClubSocialRequest,
@@ -42,9 +42,9 @@ struct ClubRequest {
 struct ClubEdit {
     email: String,
     club_name: String,
-    description: Option<String>,
-    about: Option<String>,
-    meet_time: Option<String>,
+    description: String,
+    about: String,
+    meet_time: String,
     profile_picture_url: String,
 }
 
