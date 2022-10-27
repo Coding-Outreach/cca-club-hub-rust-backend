@@ -24,9 +24,7 @@ pub async fn sanity_check() {
         .body("SANITY CHECK".to_string())
         .unwrap();
 
-    if let Err(e) = send(email).await {
-        panic!("email sanity check failed with {:?}", e);
-    }
+    send(email).await.expect("email sanity check failed");
 }
 
 pub async fn send(msg: Message) -> Result<LettreResponse, LettreError> {
