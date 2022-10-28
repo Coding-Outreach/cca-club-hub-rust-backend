@@ -4,6 +4,7 @@ use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConne
 
 pub mod api;
 pub mod auth;
+pub mod email;
 pub mod error;
 pub mod models;
 pub mod schema;
