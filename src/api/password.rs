@@ -6,7 +6,12 @@ use crate::{
     schema::*,
     DbPool,
 };
-use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
+use axum::{
+    extract::Path,
+    http::StatusCode,
+    routing::{get, post},
+    Extension, Json, Router,
+};
 use diesel::{update, ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::RunQueryDsl;
 use lettre::{message::Mailbox, Address, Message};
@@ -42,6 +47,8 @@ async fn password_request(
     Json(req): Json<PwdRequest>,
 ) -> AppResult<()> {
     let conn = &mut pool.get().await?;
+
+    eprintln!("email: {:?}", req.email);
 
     if let Some(club) = clubs::table
         .filter(clubs::email.eq(req.email))
@@ -129,10 +136,27 @@ async fn password_reset(
         Ok(())
     } else {
         Err(AppError::from(
-            StatusCode::UNAUTHORIZED,
+            StatusCode::BAD_REQUEST,
             "invalid password reset url",
         ))
     }
+}
+
+async fn check_uid(
+    Extension(resets): Extension<Arc<Mutex<Resets>>>,
+    Path(uid): Path<String>,
+) -> AppResult<()> {
+    {
+        eprintln!("uid: {uid:?}");
+        eprintln!("uids: {:?}", resets.lock().await.0);
+    }
+    resets.lock().await.0.get(&uid).map_or(
+        Err(AppError::from(
+            StatusCode::BAD_REQUEST,
+            "invalid password reset url",
+        )),
+        |_| Ok(()),
+    )
 }
 
 pub fn app() -> Router {
@@ -141,5 +165,6 @@ pub fn app() -> Router {
     Router::new()
         .route("/reset", post(password_request))
         .route("/:uid", post(password_reset))
+        .route("/:uid", get(check_uid))
         .layer(Extension(shared_resets))
 }

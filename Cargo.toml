@@ -22,3 +22,5 @@ serde = { version = "1.0.145", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["rt", "macros", "sync"] }
 lettre = { version = "0.10", features = ["tokio1-native-tls"] }
 nanoid = "0.4.0"
+tower-http = { version = "0.3.5", features = ["cors"] }
+http = "0.2.8"

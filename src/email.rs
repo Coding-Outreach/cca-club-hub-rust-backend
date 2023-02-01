@@ -19,7 +19,8 @@ lazy_static::lazy_static! {
 pub async fn sanity_check() {
     let mbox = Mailbox::new(None, EMAIL_ADDRESS.clone());
     let email = Message::builder()
-        .to(mbox)
+        .to(mbox.clone())
+        .from(mbox)
         .subject("Ensuring provided email is valid")
         .body("SANITY CHECK".to_string())
         .unwrap();
