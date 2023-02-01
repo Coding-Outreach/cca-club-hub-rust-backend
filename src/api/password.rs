@@ -138,13 +138,7 @@ async fn password_reset(
 
     resets.0.remove(&uid);
 
-        Ok(())
-    } else {
-        Err(AppError::from(
-            StatusCode::BAD_REQUEST,
-            "invalid password reset url",
-        ))
-    }
+    Ok(())
 }
 
 async fn check_uid(
