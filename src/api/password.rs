@@ -48,8 +48,6 @@ async fn password_request(
 ) -> AppResult<()> {
     let conn = &mut pool.get().await?;
 
-    eprintln!("email: {:?}", req.email);
-
     if let Some(club) = clubs::table
         .filter(clubs::email.eq(req.email))
         .first::<Club>(conn)
@@ -146,10 +144,6 @@ async fn check_uid(
     Extension(resets): Extension<Arc<Mutex<Resets>>>,
     Path(uid): Path<String>,
 ) -> AppResult<()> {
-    {
-        eprintln!("uid: {uid:?}");
-        eprintln!("uids: {:?}", resets.lock().await.0);
-    }
     resets.lock().await.0.get(&uid).map_or(
         Err(AppError::from(
             StatusCode::BAD_REQUEST,
