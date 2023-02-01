@@ -17,8 +17,8 @@ struct ClubRegisterRequest {
     pub email: String,
     pub password: String,
     pub name: String,
-    pub description: Option<String>,
-    pub meet_time: Option<String>,
+    pub description: String,
+    pub meet_time: String,
 }
 
 #[derive(Deserialize)]
@@ -30,14 +30,15 @@ struct ClubLoginRequest {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubAuthorizedResponse {
-    jwt: String,
+    pub token: String,
 }
 
 impl ClubAuthorizedResponse {
     fn from_club(club: &Club) -> anyhow::Result<ClubAuthorizedResponse> {
         // expires after one day
         Ok(ClubAuthorizedResponse {
-            jwt: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
+            // expires after one day
+            token: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
         })
     }
 }
@@ -57,8 +58,9 @@ async fn register(
         email: String,
         password_hash: String,
         club_name: String,
-        description: Option<String>,
-        meet_time: Option<String>,
+        description: String,
+        about: String,
+        meet_time: String,
         profile_picture_url: String,
         featured: bool,
     }
@@ -78,6 +80,7 @@ async fn register(
             password_hash: auth::hash_password(req.password)?,
             club_name: req.name,
             description: req.description,
+            about: "".to_string(),
             meet_time: req.meet_time,
             profile_picture_url: DEFAULT_PROFILE_PICTURE_URL.to_string(),
             featured: false,

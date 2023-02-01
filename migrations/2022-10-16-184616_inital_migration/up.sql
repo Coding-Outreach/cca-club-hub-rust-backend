@@ -2,15 +2,15 @@
 CREATE TABLE clubs
 (
     id                  SERIAL PRIMARY KEY,
-    username            VARCHAR(200) NOT NULL UNIQUE,
-    email               VARCHAR(200) NOT NULL,
-    password_hash       VARCHAR(200) NOT NULL,
-    club_name           VARCHAR(200) NOT NULL,
-    description         VARCHAR(500),
-    about               TEXT,
-    meet_time           VARCHAR(500),
-    profile_picture_url VARCHAR(200) NOT NULL,
-    featured            BOOLEAN      NOT NULL
+    username            VARCHAR(200)   NOT NULL UNIQUE,
+    email               VARCHAR(200)   NOT NULL,
+    password_hash       VARCHAR(200)   NOT NULL,
+    club_name           VARCHAR(200)   NOT NULL,
+    description         VARCHAR(500)   NOT NULL,
+    about               TEXT           NOT NULL,
+    meet_time           VARCHAR(500)   NOT NULL,
+    profile_picture_url VARCHAR(64000) NOT NULL,
+    featured            BOOLEAN        NOT NULL
 );
 
 -- Social Media Links (Club Instagram, Discord, Classroom, etc. links) --
