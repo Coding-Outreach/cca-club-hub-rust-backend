@@ -1,11 +1,8 @@
 use axum::Extension;
 use cca_club_hub::{auth::ensure_jwt_secret_is_valid, connect_to_db, email};
 use envconfig::Envconfig;
-use tower_http::cors::{Any, CorsLayer, AllowOrigin};
-use http::{
-    Method,
-    header,
-};
+use http::{header, Method};
+use tower_http::cors::{Any, CorsLayer};
 
 #[derive(Envconfig)]
 struct Config {
