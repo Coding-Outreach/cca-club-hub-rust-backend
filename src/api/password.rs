@@ -48,16 +48,22 @@ async fn password_request(
 ) -> AppResult<()> {
     let conn = &mut pool.get().await?;
 
-    if let Some(club) = clubs::table
+    let Some(club) = clubs::table
         .filter(clubs::email.eq(req.email))
         .first::<Club>(conn)
         .await
-        .optional()?
-    {
-        let uid = nanoid!();
-        let link = format!("{}/api/password/{}", *HOST, uid);
-        let body = format!(
-            r"Hi {},
+        .optional()? else {
+        return
+            Err(AppError::from(
+                StatusCode::NOT_FOUND,
+                "could not find matching club",
+            ));
+    };
+
+    let uid = nanoid!();
+    let link = format!("{}/api/password/{}", *HOST, uid);
+    let body = format!(
+        r"Hi {},
 
 We have received a request to change your CCA Club Hub password. To reset your password, please click the below link within the next {} minutes (or paste it into your browser if clicking is not working):
 
@@ -67,42 +73,36 @@ If you did not request this password reset you can disregard this message and yo
 
 Thanks,
 The CCA Club Hub Team.",
-            club.username,
-            RESET_ALLOWED_TIME.as_secs() / 60,
-            link
-        );
+        club.username,
+        RESET_ALLOWED_TIME.as_secs() / 60,
+        link
+    );
 
-        let destination_address = club
-            .email
-            .parse::<Address>()
-            .map_err(|_| AppError::from(StatusCode::BAD_REQUEST, "invalid email"))?;
+    let destination_address = club
+        .email
+        .parse::<Address>()
+        .map_err(|_| AppError::from(StatusCode::BAD_REQUEST, "invalid email"))?;
 
-        let email = Message::builder()
-            .from(Mailbox::new(
-                Some("apathetic programmers".to_string()),
-                EMAIL_ADDRESS.clone(),
-            ))
-            .to(Mailbox::new(Some(club.username), destination_address))
-            .subject("CCA Club Hub Password Reset")
-            .body(body)
-            .unwrap();
-
-        match email::send(email).await {
-            Ok(_) => {
-                let mut resets = resets.lock().await;
-                resets.0.insert(uid, (Instant::now(), club.id));
-                Ok(())
-            }
-            Err(_) => Err(AppError::from(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to send email",
-            )),
-        }
-    } else {
-        Err(AppError::from(
-            StatusCode::NOT_FOUND,
-            "could not find matching club",
+    let email = Message::builder()
+        .from(Mailbox::new(
+            Some("apathetic programmers".to_string()),
+            EMAIL_ADDRESS.clone(),
         ))
+        .to(Mailbox::new(Some(club.username), destination_address))
+        .subject("CCA Club Hub Password Reset")
+        .body(body)
+        .unwrap();
+
+    match email::send(email).await {
+        Ok(_) => {
+            let mut resets = resets.lock().await;
+            resets.0.insert(uid, (Instant::now(), club.id));
+            Ok(())
+        }
+        Err(_) => Err(AppError::from(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to send email",
+        )),
     }
 }
 
@@ -113,23 +113,30 @@ async fn password_reset(
     Json(req): Json<NewPwdRequest>,
 ) -> AppResult<()> {
     let mut resets = resets.lock().await;
-    if let Some((instant, club_id)) = resets.0.get(&uid) {
-        if instant.elapsed() > RESET_ALLOWED_TIME {
-            resets.0.remove(&uid);
-            return Err(AppError::from(
-                StatusCode::UNAUTHORIZED,
-                "password reset expired",
-            ));
-        }
 
-        let conn = &mut pool.get().await?;
+    let Some((instant, club_id)) =  resets.0.get(&uid) else {
+        return Err(AppError::from(
+            StatusCode::UNAUTHORIZED,
+            "invalid password reset url",
+        ));
+    };
 
-        update(clubs::table.find(club_id))
-            .set(clubs::password_hash.eq(auth::hash_password(req.password)?))
-            .execute(conn)
-            .await?;
-
+    if instant.elapsed() > RESET_ALLOWED_TIME {
         resets.0.remove(&uid);
+        return Err(AppError::from(
+            StatusCode::UNAUTHORIZED,
+            "password reset expired",
+        ));
+    }
+
+    let conn = &mut pool.get().await?;
+
+    update(clubs::table.find(club_id))
+        .set(clubs::password_hash.eq(auth::hash_password(req.password)?))
+        .execute(conn)
+        .await?;
+
+    resets.0.remove(&uid);
 
         Ok(())
     } else {
