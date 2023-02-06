@@ -1,6 +1,6 @@
 use crate::{
     auth,
-    email::{self, EMAIL_ADDRESS, HOST},
+    email::{self, EMAIL_ADDRESS, FRONTEND_HOST},
     error::{AppError, AppResult},
     models::Club,
     schema::*,
@@ -61,7 +61,7 @@ async fn password_request(
     };
 
     let uid = nanoid!();
-    let link = format!("{}/api/password/{}", *HOST, uid);
+    let link = format!("{}/password-reset", *FRONTEND_HOST);
     let body = format!(
         r"Hi {},
 

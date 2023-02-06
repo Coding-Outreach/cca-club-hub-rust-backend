@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
     static ref CREDS: Credentials = Credentials::new(EMAIL_USERNAME.to_string(), EMAIL_PASSWORD.to_string());
     pub static ref EMAIL_ADDRESS: Address = EMAIL_USERNAME.parse::<Address>().expect("invalid email username");
     // maybe figure out a better place to the HOST var
-    pub static ref HOST: String = var("HOST").expect("HOST must be set for correct password reset urls to be generated");
+    pub static ref FRONTEND_HOST: String = var("FRONTEND_HOST").expect("FRONTEND_HOST must be set for correct password reset urls to be generated");
 }
 
 pub async fn sanity_check() {
