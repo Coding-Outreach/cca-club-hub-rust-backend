@@ -37,6 +37,7 @@ diesel::table! {
         about -> Text,
         meet_time -> Varchar,
         profile_picture_url -> Varchar,
+        banner_url -> Varchar,
         featured -> Bool,
     }
 }

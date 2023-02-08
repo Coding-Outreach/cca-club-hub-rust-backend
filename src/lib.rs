@@ -1,6 +1,9 @@
-use axum::Router;
+use std::io;
+
+use axum::{http::StatusCode, routing::get_service, Router};
 use deadpool::managed::Pool;
 use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
+use tower_http::services::ServeDir;
 
 pub mod api;
 pub mod auth;
@@ -18,5 +21,12 @@ pub fn connect_to_db(db_url: &str) -> Pool<AsyncDieselConnectionManager<AsyncPgC
 }
 
 pub fn app() -> Router {
-    Router::new().nest("/api", api::app())
+    let serve = get_service(ServeDir::new("assets")).handle_error(handle_error);
+    Router::new()
+        .nest("/api", api::app())
+        .nest("/assets", serve)
+}
+
+async fn handle_error(_: io::Error) -> error::AppError {
+    error::AppError::from(StatusCode::INTERNAL_SERVER_ERROR, "failed to fetch asset")
 }

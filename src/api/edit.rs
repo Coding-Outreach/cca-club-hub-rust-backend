@@ -5,11 +5,26 @@ use crate::{
     schema::*,
     DbPool,
 };
-use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
+use axum::{
+    body::Bytes,
+    headers::ContentType,
+    http::StatusCode,
+    routing::{post, put},
+    Extension, Json, Router, TypedHeader,
+};
 use diesel::{delete, insert_into, prelude::*, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use mime::Mime;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{HashMap, HashSet},
+    env::current_dir,
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
+};
 
 #[derive(AsChangeset)]
 #[diesel(treat_none_as_null = true)]
@@ -30,7 +45,6 @@ struct ClubRequest {
     description: String,
     about: String,
     meet_time: String,
-    profile_picture_url: String,
     categories: Vec<String>,
     socials: ClubSocialRequest,
 }
@@ -43,7 +57,6 @@ struct ClubEdit {
     description: String,
     about: String,
     meet_time: String,
-    profile_picture_url: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Insertable)]
@@ -53,13 +66,82 @@ struct NewClubCategory {
     category_id: i32,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UploadPfpResponse {
+    url: String,
+}
+
+lazy_static::lazy_static! {
+    static ref CWD: PathBuf = current_dir().expect("could not get current working directory");
+    static ref PFP_DIR: PathBuf = CWD.join("static/profile_pictures/");
+}
+
+async fn upload_pfp(
+    Extension(pool): Extension<DbPool>,
+    TypedHeader(content_type): TypedHeader<ContentType>,
+    bytes: Bytes,
+    Auth(auth): Auth,
+) -> AppResult<Json<UploadPfpResponse>> {
+    let club_id = auth.club_db_id;
+
+    let conn = &mut pool.get().await?;
+    let kind = infer::get(&bytes).ok_or(AppError::from(
+        StatusCode::BAD_REQUEST,
+        "file type not recognized",
+    ))?;
+
+    let mime: Mime = kind.mime_type().parse()?;
+
+    if content_type != mime.clone().into() {
+        return Err(AppError::from(
+            StatusCode::BAD_REQUEST,
+            "file type does not match Content-Type header",
+        ));
+    }
+
+    if mime.type_() != mime::IMAGE {
+        return Err(AppError::from(StatusCode::BAD_REQUEST, "file not an image"));
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+
+    let result = hasher.finalize();
+
+    let file_name = format!("{:02x}.{}", result[..].iter().format(""), kind.extension());
+    let mut path: PathBuf = ["assets", "pfp"].iter().collect();
+    fs::create_dir_all(&path)?;
+
+    path.push(&file_name);
+
+    let mut file = File::create(&path)?;
+
+    file.write(&bytes)?;
+
+    let path_string = path
+        .to_str()
+        .ok_or(AppError::from(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "can't turn path into string",
+        ))?
+        .to_string();
+
+    update(clubs::table)
+        .filter(clubs::id.eq(club_id))
+        .set(clubs::profile_picture_url.eq(&path_string))
+        .execute(conn)
+        .await?;
+
+    Ok(Json(UploadPfpResponse { url: path_string }))
+}
+
 async fn edit_club(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRequest>,
-    Path(club_id): Path<String>,
-    auth: Auth,
+    Auth(auth): Auth,
 ) -> AppResult<()> {
-    let club_id = auth.into_authorized(&club_id)?.club_db_id;
+    let club_id = auth.club_db_id;
 
     let conn = &mut pool.get().await?;
 
@@ -69,7 +151,6 @@ async fn edit_club(
             meet_time: req.meet_time,
             description: req.description,
             about: req.about,
-            profile_picture_url: req.profile_picture_url,
         })
         .execute(conn)
         .await?;
@@ -123,5 +204,7 @@ async fn edit_club(
 }
 
 pub fn app() -> Router {
-    Router::new().route("/:club_id", post(edit_club))
+    Router::new()
+        .route("/", post(edit_club))
+        .route("/pfp", put(upload_pfp))
 }

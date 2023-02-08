@@ -76,14 +76,13 @@ pub fn generate_jwt(club: &Club, exp: Duration) -> JwtResult<String> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Auth(Result<Claims, ResponseStatusError>);
+pub struct Auth(pub Claims);
 
 #[async_trait]
 impl<B: Send> FromRequest<B> for Auth {
-    type Rejection = ();
+    type Rejection = ResponseStatusError;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        async fn inner<B: Send>(req: &mut RequestParts<B>) -> Result<Claims, ResponseStatusError> {
             let TypedHeader(Authorization(bearer)) = req
                 .extract::<TypedHeader<Authorization<Bearer>>>()
                 .await
@@ -96,17 +95,14 @@ impl<B: Send> FromRequest<B> for Auth {
             if claims.exp < jsonwebtoken::get_current_timestamp() {
                 Err((StatusCode::UNAUTHORIZED, "token expired").into())
             } else {
-                Ok(claims)
+                Ok(Auth(claims))
             }
-        }
-
-        Ok(Self(inner(req).await))
     }
 }
 
 impl Auth {
     pub fn into_authorized(self, club_id: &str) -> AppResult<Claims> {
-        match self.0? {
+        match self.0 {
             c if c.club_id == club_id => Ok(c),
             _ => Err(AppError::from(
                 StatusCode::UNAUTHORIZED,

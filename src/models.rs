@@ -12,6 +12,7 @@ pub struct Club {
     pub about: String,
     pub meet_time: String,
     pub profile_picture_url: String,
+    pub banner_url: String,
     pub featured: bool,
 }
 
