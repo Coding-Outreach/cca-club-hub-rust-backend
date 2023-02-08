@@ -205,6 +205,6 @@ async fn edit_club(
 
 pub fn app() -> Router {
     Router::new()
-        .route("/", post(edit_club))
+        .route("/info", post(edit_club))
         .route("/pfp", put(upload_pfp))
 }
