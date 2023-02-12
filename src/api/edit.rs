@@ -86,10 +86,8 @@ async fn upload_pfp(
     let club_id = auth.club_db_id;
 
     let conn = &mut pool.get().await?;
-    let kind = infer::get(&bytes).ok_or_else(|| AppError::from(
-        StatusCode::BAD_REQUEST,
-        "file type not recognized",
-    ))?;
+    let kind = infer::get(&bytes)
+        .ok_or_else(|| AppError::from(StatusCode::BAD_REQUEST, "file type not recognized"))?;
 
     let mime: Mime = kind.mime_type().parse()?;
 
@@ -121,10 +119,12 @@ async fn upload_pfp(
 
     let path_string = path
         .to_str()
-        .ok_or_else(|| AppError::from(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "can't turn path into string",
-        ))?
+        .ok_or_else(|| {
+            AppError::from(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "can't turn path into string",
+            )
+        })?
         .to_string();
 
     update(clubs::table)
