@@ -46,7 +46,6 @@ impl ClubAuthorizedResponse {
 const DEFAULT_PROFILE_PICTURE_URL: &str = "";
 const DEFAULT_BANNER_URL: &str = "";
 
-
 // TODO: email users after registering
 async fn register(
     Extension(pool): Extension<DbPool>,

@@ -83,20 +83,20 @@ impl<B: Send> FromRequest<B> for Auth {
     type Rejection = ResponseStatusError;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-            let TypedHeader(Authorization(bearer)) = req
-                .extract::<TypedHeader<Authorization<Bearer>>>()
-                .await
-                .map_err(|_| (StatusCode::UNAUTHORIZED, "missing credentials"))?;
-            let claims =
-                jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Default::default())
-                    .map_err(|_| (StatusCode::BAD_REQUEST, "invalid token"))?
-                    .claims;
+        let TypedHeader(Authorization(bearer)) = req
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "missing credentials"))?;
+        let claims =
+            jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Default::default())
+                .map_err(|_| (StatusCode::BAD_REQUEST, "invalid token"))?
+                .claims;
 
-            if claims.exp < jsonwebtoken::get_current_timestamp() {
-                Err((StatusCode::UNAUTHORIZED, "token expired").into())
-            } else {
-                Ok(Auth(claims))
-            }
+        if claims.exp < jsonwebtoken::get_current_timestamp() {
+            Err((StatusCode::UNAUTHORIZED, "token expired").into())
+        } else {
+            Ok(Auth(claims))
+        }
     }
 }
 
