@@ -61,7 +61,7 @@ async fn password_request(
     };
 
     let uid = nanoid!();
-    let link = format!("{}/password-reset", *FRONTEND_HOST);
+    let link = format!("{}/password/{}", *FRONTEND_HOST, uid);
     let body = format!(
         r"Hi {},
 
@@ -159,6 +159,6 @@ pub fn app() -> Router {
     Router::new()
         .route("/reset", post(password_request))
         .route("/:uid", post(password_reset))
-        .route("/:uid", get(check_uid))
+        .route("/check/:uid", get(check_uid))
         .layer(Extension(shared_resets))
 }
