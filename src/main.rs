@@ -1,5 +1,5 @@
 use axum::{http::Method, Extension};
-use cca_club_hub::{auth::ensure_jwt_secret_is_valid, connect_to_db};
+use cca_club_hub::{auth::ensure_jwt_secret_is_valid, connect_to_db, email};
 use envconfig::Envconfig;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -17,10 +17,11 @@ async fn main() {
 
     let config = Config::init_from_env().unwrap();
     ensure_jwt_secret_is_valid();
+    email::sanity_check().await;
 
     let pool = connect_to_db(&config.db_url);
     let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST, Method::PUT])
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::OPTIONS])
         .allow_headers(Any)
         .allow_origin(Any);
     let app = cca_club_hub::app().layer(Extension(pool)).layer(cors);

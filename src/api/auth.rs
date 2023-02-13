@@ -35,6 +35,7 @@ struct ClubAuthorizedResponse {
 
 impl ClubAuthorizedResponse {
     fn from_club(club: &Club) -> anyhow::Result<ClubAuthorizedResponse> {
+        // expires after one day
         Ok(ClubAuthorizedResponse {
             // expires after one day
             token: auth::generate_jwt(club, Duration::from_secs(24 * 60 * 60))?,
@@ -93,14 +94,11 @@ async fn register(
         .await
         .optional()?;
 
-    let new_club = match new_club {
-        Some(x) => x,
-        None => {
-            return Err(AppError::from(
-                StatusCode::CONFLICT,
-                "username has been taken",
-            ));
-        }
+    let Some(new_club) = new_club else {
+        return Err(AppError::from(
+            StatusCode::CONFLICT,
+            "username has been taken",
+        ));
     };
 
     diesel::insert_into(club_socials::table)
