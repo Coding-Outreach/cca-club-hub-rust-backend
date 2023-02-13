@@ -45,6 +45,7 @@ impl ClubAuthorizedResponse {
 
 // TODO: default profile picture url
 const DEFAULT_PROFILE_PICTURE_URL: &str = "";
+const DEFAULT_BANNER_URL: &str = "";
 
 // TODO: email users after registering
 async fn register(
@@ -62,6 +63,7 @@ async fn register(
         about: String,
         meet_time: String,
         profile_picture_url: String,
+        banner_url: String,
         featured: bool,
     }
 
@@ -83,6 +85,7 @@ async fn register(
             about: "".to_string(),
             meet_time: req.meet_time,
             profile_picture_url: DEFAULT_PROFILE_PICTURE_URL.to_string(),
+            banner_url: DEFAULT_BANNER_URL.to_string(),
             featured: false,
         })
         .on_conflict(clubs::username)

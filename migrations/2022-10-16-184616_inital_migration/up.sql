@@ -9,7 +9,8 @@ CREATE TABLE clubs
     description         VARCHAR(500)   NOT NULL,
     about               TEXT           NOT NULL,
     meet_time           VARCHAR(500)   NOT NULL,
-    profile_picture_url VARCHAR(64000) NOT NULL,
+    profile_picture_url VARCHAR(128)   NOT NULL,
+    banner_url          VARCHAR(128)   NOT NULL,
     featured            BOOLEAN        NOT NULL
 );
 
