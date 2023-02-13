@@ -67,15 +67,14 @@ async fn password_request(
 
 We have received a request to change your CCA Club Hub password. To reset your password, please click the below link within the next {} minutes (or paste it into your browser if clicking is not working):
 
-{}
+{link}
 
 If you did not request this password reset you can disregard this message and your password will remain unchanged.
 
 Thanks,
 The CCA Club Hub Team.",
         club.username,
-        RESET_ALLOWED_TIME.as_secs() / 60,
-        link
+        RESET_ALLOWED_TIME.as_secs() / 60
     );
 
     let destination_address = club
