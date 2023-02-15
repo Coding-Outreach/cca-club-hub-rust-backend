@@ -25,6 +25,7 @@ use std::{
     io::Write,
     path::PathBuf,
 };
+use url::{Host, Url};
 
 #[derive(AsChangeset)]
 #[diesel(treat_none_as_null = true)]
@@ -145,6 +146,19 @@ async fn edit_club(
 
     let conn = &mut pool.get().await?;
 
+    let socials = req.socials;
+
+
+    if let Some(website) = socials.website.as_ref() {
+        if Url::parse(website).is_err() {
+            return Err(AppError::from(StatusCode::BAD_REQUEST, "Website social isn't a valid URL"))
+        };
+    }
+
+    ensure_domain(&socials.instagram, "instagram.com")?;
+    ensure_domain(&socials.discord, "discord.gg")?;
+    ensure_domain(&socials.google_classroom, "classrpom.google.com")?;
+    
     update(clubs::table)
         .set(ClubEdit {
             club_name: req.club_name,
@@ -196,7 +210,7 @@ async fn edit_club(
 
     update(club_socials::table)
         .filter(club_socials::club_id.eq(club_id))
-        .set(req.socials)
+        .set(socials)
         .execute(conn)
         .await?;
 
@@ -207,4 +221,18 @@ pub fn app() -> Router {
     Router::new()
         .route("/info", post(edit_club))
         .route("/pfp", put(upload_pfp))
+}
+
+
+fn ensure_domain(url: &Option<String>, domain: &str) -> AppResult<()> {
+    if let Some(url) = url.as_ref() {
+        let Ok(social) = Url::parse(url) else {
+            return Err(AppError::from(StatusCode::BAD_REQUEST, format!("invalid social url, expected {domain} url")))
+        };
+        if social.host() != Some(Host::Domain(domain)) || (social.scheme() != "https" && social.scheme() != "http") {
+            return Err(AppError::from(StatusCode::BAD_REQUEST, format!("invalid social url, expected {domain} url")))
+        }
+    }
+
+    Ok(())
 }

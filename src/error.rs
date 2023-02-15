@@ -51,8 +51,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
             AppError::InternalServerError(_err) => {
-                // TODO: log error
-                AppError::from(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+                AppError::from(StatusCode::INTERNAL_SERVER_ERROR, format!("internal server error: {_err}"))
                     .into_response()
             }
             AppError::ResponseStatusError(rse) => rse.into_response(),
