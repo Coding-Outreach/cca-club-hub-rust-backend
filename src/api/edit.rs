@@ -1,3 +1,4 @@
+use super::{DEFAULT_BANNER_URL, DEFAULT_PROFILE_PICTURE_URL};
 use crate::{
     auth::Auth,
     error::{AppError, AppResult},
@@ -103,6 +104,13 @@ async fn upload_pfp(
         return Err(AppError::from(StatusCode::BAD_REQUEST, "file not an image"));
     }
 
+    if bytes.len() > 5_000_000 {
+        return Err(AppError::from(
+            StatusCode::BAD_REQUEST,
+            "image too big (5mb max)",
+        ));
+    }
+
     let mut hasher = Sha256::new();
     hasher.update(&bytes);
 
@@ -118,6 +126,17 @@ async fn upload_pfp(
 
     file.write_all(&bytes)?;
 
+    let old_pfp = clubs::table
+        .select(clubs::profile_picture_url)
+        .filter(clubs::id.eq(club_id))
+        .first::<String>(conn)
+        .await?;
+
+    let other_pfps = clubs::table
+        .filter(clubs::profile_picture_url.eq(&old_pfp))
+        .select(diesel::dsl::count(clubs::profile_picture_url))
+        .first::<i64>(conn).await?;
+
     let path_string = path
         .to_str()
         .ok_or_else(|| {
@@ -128,11 +147,16 @@ async fn upload_pfp(
         })?
         .to_string();
 
+
     update(clubs::table)
         .filter(clubs::id.eq(club_id))
         .set(clubs::profile_picture_url.eq(&path_string))
         .execute(conn)
         .await?;
+
+    if old_pfp != DEFAULT_PROFILE_PICTURE_URL && other_pfps == 1 {
+        fs::remove_file(old_pfp)?;
+    }
 
     Ok(Json(UploadPfpResponse { url: path_string }))
 }
@@ -148,17 +172,19 @@ async fn edit_club(
 
     let socials = req.socials;
 
-
     if let Some(website) = socials.website.as_ref() {
         if Url::parse(website).is_err() {
-            return Err(AppError::from(StatusCode::BAD_REQUEST, "Website social isn't a valid URL"))
+            return Err(AppError::from(
+                StatusCode::BAD_REQUEST,
+                "Website social isn't a valid URL",
+            ));
         };
     }
 
     ensure_domain(&socials.instagram, "instagram.com")?;
     ensure_domain(&socials.discord, "discord.gg")?;
     ensure_domain(&socials.google_classroom, "classrpom.google.com")?;
-    
+
     update(clubs::table)
         .set(ClubEdit {
             club_name: req.club_name,
@@ -223,14 +249,18 @@ pub fn app() -> Router {
         .route("/pfp", put(upload_pfp))
 }
 
-
 fn ensure_domain(url: &Option<String>, domain: &str) -> AppResult<()> {
     if let Some(url) = url.as_ref() {
         let Ok(social) = Url::parse(url) else {
             return Err(AppError::from(StatusCode::BAD_REQUEST, format!("invalid social url, expected {domain} url")))
         };
-        if social.host() != Some(Host::Domain(domain)) || (social.scheme() != "https" && social.scheme() != "http") {
-            return Err(AppError::from(StatusCode::BAD_REQUEST, format!("invalid social url, expected {domain} url")))
+        if social.host() != Some(Host::Domain(domain))
+            || (social.scheme() != "https" && social.scheme() != "http")
+        {
+            return Err(AppError::from(
+                StatusCode::BAD_REQUEST,
+                format!("invalid social url, expected {domain} url"),
+            ));
         }
     }
 

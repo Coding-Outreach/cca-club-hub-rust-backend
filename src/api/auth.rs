@@ -1,3 +1,4 @@
+use super::{DEFAULT_BANNER_URL, DEFAULT_PROFILE_PICTURE_URL};
 use crate::{
     auth,
     error::{AppError, AppResult},
@@ -42,10 +43,6 @@ impl ClubAuthorizedResponse {
         })
     }
 }
-
-// TODO: default profile picture url
-const DEFAULT_PROFILE_PICTURE_URL: &str = "assets/default_pfp.png";
-const DEFAULT_BANNER_URL: &str = "";
 
 // TODO: email users after registering
 async fn register(
