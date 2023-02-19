@@ -1,3 +1,6 @@
 /target
+/debug
 .env
+**/*.rs.bk
 **/*.DS_Store
+/assets/pfp

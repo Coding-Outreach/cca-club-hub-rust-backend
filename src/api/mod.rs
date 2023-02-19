@@ -12,3 +12,6 @@ pub fn app() -> Router {
         .nest("/club", club::app())
         .nest("/password", password::app())
 }
+
+pub const DEFAULT_PROFILE_PICTURE_URL: &str = "assets/default_pfp.png";
+pub const DEFAULT_BANNER_URL: &str = "";
