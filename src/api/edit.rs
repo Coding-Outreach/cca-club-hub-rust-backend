@@ -1,4 +1,4 @@
-use super::{DEFAULT_BANNER_URL, DEFAULT_PROFILE_PICTURE_URL};
+use super::DEFAULT_PROFILE_PICTURE_URL;
 use crate::{
     auth::Auth,
     error::{AppError, AppResult},
@@ -135,7 +135,8 @@ async fn upload_pfp(
     let other_pfps = clubs::table
         .filter(clubs::profile_picture_url.eq(&old_pfp))
         .select(diesel::dsl::count(clubs::profile_picture_url))
-        .first::<i64>(conn).await?;
+        .first::<i64>(conn)
+        .await?;
 
     let path_string = path
         .to_str()
@@ -146,7 +147,6 @@ async fn upload_pfp(
             )
         })?
         .to_string();
-
 
     update(clubs::table)
         .filter(clubs::id.eq(club_id))
