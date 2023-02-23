@@ -46,9 +46,4 @@ diesel::joinable!(club_categories -> categories (category_id));
 diesel::joinable!(club_categories -> clubs (club_id));
 diesel::joinable!(club_socials -> clubs (club_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    categories,
-    club_categories,
-    club_socials,
-    clubs,
-);
+diesel::allow_tables_to_appear_in_same_query!(categories, club_categories, club_socials, clubs,);
