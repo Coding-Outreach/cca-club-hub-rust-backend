@@ -8,10 +8,11 @@ pub struct Club {
     pub email: String,
     pub password_hash: String,
     pub club_name: String,
-    pub description: Option<String>,
-    pub about: Option<String>,
-    pub meet_time: Option<String>,
+    pub description: String,
+    pub about: String,
+    pub meet_time: String,
     pub profile_picture_url: String,
+    pub banner_url: String,
     pub featured: bool,
 }
 

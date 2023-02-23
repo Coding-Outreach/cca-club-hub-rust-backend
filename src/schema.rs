@@ -33,10 +33,11 @@ diesel::table! {
         email -> Varchar,
         password_hash -> Varchar,
         club_name -> Varchar,
-        description -> Nullable<Varchar>,
-        about -> Nullable<Text>,
-        meet_time -> Nullable<Varchar>,
+        description -> Varchar,
+        about -> Text,
+        meet_time -> Varchar,
         profile_picture_url -> Varchar,
+        banner_url -> Varchar,
         featured -> Bool,
     }
 }
@@ -45,4 +46,9 @@ diesel::joinable!(club_categories -> categories (category_id));
 diesel::joinable!(club_categories -> clubs (club_id));
 diesel::joinable!(club_socials -> clubs (club_id));
 
-diesel::allow_tables_to_appear_in_same_query!(categories, club_categories, club_socials, clubs,);
+diesel::allow_tables_to_appear_in_same_query!(
+    categories,
+    club_categories,
+    club_socials,
+    clubs,
+);

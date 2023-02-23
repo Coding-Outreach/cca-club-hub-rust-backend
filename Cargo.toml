@@ -15,10 +15,16 @@ diesel = { version = "2.0.2", features = ["postgres"] }
 diesel-async = { version = "0.1.1", features = ["deadpool", "postgres"] }
 dotenv = "0.15.0"
 envconfig = "0.10.0"
+infer = "0.12.0"
+itertools = "0.10.5"
 jsonwebtoken = "8.1.1"
 lazy_static = "1.4.0"
+mime = "0.3.16"
 password-hash = { version = "0.4.2", features = ["std"] }
 serde = { version = "1.0.147", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros", "sync"] }
 lettre = { version = "0.10", features = ["tokio1-native-tls"] }
 nanoid = "0.4.0"
+tower-http = { version = "0.3.5", features = ["cors", "fs"] }
+sha2 = "0.10.6"
+url = "2.3.1"

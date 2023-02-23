@@ -1,12 +1,17 @@
 use crate::{
     auth,
-    email::{self, EMAIL_ADDRESS, HOST},
+    email::{self, EMAIL_ADDRESS, FRONTEND_HOST},
     error::{AppError, AppResult},
     models::Club,
     schema::*,
     DbPool,
 };
-use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
+use axum::{
+    extract::Path,
+    http::StatusCode,
+    routing::{get, post},
+    Extension, Json, Router,
+};
 use diesel::{update, ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::RunQueryDsl;
 use lettre::{message::Mailbox, Address, Message};
@@ -56,21 +61,20 @@ async fn password_request(
     };
 
     let uid = nanoid!();
-    let link = format!("{}/api/password/{}", *HOST, uid);
+    let link = format!("{}/password/{}", *FRONTEND_HOST, uid);
     let body = format!(
         r"Hi {},
 
 We have received a request to change your CCA Club Hub password. To reset your password, please click the below link within the next {} minutes (or paste it into your browser if clicking is not working):
 
-{}
+{link}
 
 If you did not request this password reset you can disregard this message and your password will remain unchanged.
 
 Thanks,
 The CCA Club Hub Team.",
         club.username,
-        RESET_ALLOWED_TIME.as_secs() / 60,
-        link
+        RESET_ALLOWED_TIME.as_secs() / 60
     );
 
     let destination_address = club
@@ -136,11 +140,25 @@ async fn password_reset(
     Ok(())
 }
 
+async fn check_uid(
+    Extension(resets): Extension<Arc<Mutex<Resets>>>,
+    Path(uid): Path<String>,
+) -> AppResult<()> {
+    resets.lock().await.0.get(&uid).map_or(
+        Err(AppError::from(
+            StatusCode::BAD_REQUEST,
+            "invalid password reset url",
+        )),
+        |_| Ok(()),
+    )
+}
+
 pub fn app() -> Router {
     let shared_resets = Arc::new(Mutex::new(Resets(HashMap::new())));
 
     Router::new()
         .route("/reset", post(password_request))
         .route("/:uid", post(password_reset))
+        .route("/check/:uid", get(check_uid))
         .layer(Extension(shared_resets))
 }

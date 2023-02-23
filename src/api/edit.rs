@@ -1,3 +1,4 @@
+use super::DEFAULT_PROFILE_PICTURE_URL;
 use crate::{
     auth::Auth,
     error::{AppError, AppResult},
@@ -5,11 +6,27 @@ use crate::{
     schema::*,
     DbPool,
 };
-use axum::{extract::Path, http::StatusCode, routing::post, Extension, Json, Router};
+use axum::{
+    body::Bytes,
+    headers::ContentType,
+    http::StatusCode,
+    routing::{post, put},
+    Extension, Json, Router, TypedHeader,
+};
 use diesel::{delete, insert_into, prelude::*, update, AsChangeset, ExpressionMethods};
 use diesel_async::RunQueryDsl;
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use mime::Mime;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{HashMap, HashSet},
+    env::current_dir,
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
+};
+use url::{Host, Url};
 
 #[derive(AsChangeset)]
 #[diesel(treat_none_as_null = true)]
@@ -26,12 +43,10 @@ struct ClubSocialRequest {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ClubRequest {
-    email: String,
     club_name: String,
-    description: Option<String>,
-    about: Option<String>,
-    meet_time: Option<String>,
-    profile_picture_url: String,
+    description: String,
+    about: String,
+    meet_time: String,
     categories: Vec<String>,
     socials: ClubSocialRequest,
 }
@@ -40,12 +55,10 @@ struct ClubRequest {
 #[diesel(treat_none_as_null = true)]
 #[diesel(table_name = clubs)]
 struct ClubEdit {
-    email: String,
     club_name: String,
-    description: Option<String>,
-    about: Option<String>,
-    meet_time: Option<String>,
-    profile_picture_url: String,
+    description: String,
+    about: String,
+    meet_time: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Insertable)]
@@ -55,24 +68,129 @@ struct NewClubCategory {
     category_id: i32,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UploadPfpResponse {
+    url: String,
+}
+
+lazy_static::lazy_static! {
+    static ref CWD: PathBuf = current_dir().expect("could not get current working directory");
+    static ref PFP_DIR: PathBuf = CWD.join("static/profile_pictures/");
+}
+
+async fn upload_pfp(
+    Extension(pool): Extension<DbPool>,
+    TypedHeader(content_type): TypedHeader<ContentType>,
+    bytes: Bytes,
+    Auth(auth): Auth,
+) -> AppResult<Json<UploadPfpResponse>> {
+    let club_id = auth.club_db_id;
+
+    let conn = &mut pool.get().await?;
+    let kind = infer::get(&bytes)
+        .ok_or_else(|| AppError::from(StatusCode::BAD_REQUEST, "file type not recognized"))?;
+
+    let mime: Mime = kind.mime_type().parse()?;
+
+    if content_type != mime.clone().into() {
+        return Err(AppError::from(
+            StatusCode::BAD_REQUEST,
+            "file type does not match Content-Type header",
+        ));
+    }
+
+    if mime.type_() != mime::IMAGE {
+        return Err(AppError::from(StatusCode::BAD_REQUEST, "file not an image"));
+    }
+
+    if bytes.len() > 5_000_000 {
+        return Err(AppError::from(
+            StatusCode::BAD_REQUEST,
+            "image too big (5mb max)",
+        ));
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+
+    let result = hasher.finalize();
+
+    let file_name = format!("{:02x}.{}", result[..].iter().format(""), kind.extension());
+    let mut path: PathBuf = ["assets", "pfp"].iter().collect();
+    fs::create_dir_all(&path)?;
+
+    path.push(&file_name);
+
+    let mut file = File::create(&path)?;
+
+    file.write_all(&bytes)?;
+
+    let old_pfp = clubs::table
+        .select(clubs::profile_picture_url)
+        .filter(clubs::id.eq(club_id))
+        .first::<String>(conn)
+        .await?;
+
+    let other_pfps = clubs::table
+        .filter(clubs::profile_picture_url.eq(&old_pfp))
+        .select(diesel::dsl::count(clubs::profile_picture_url))
+        .first::<i64>(conn)
+        .await?;
+
+    let path_string = path
+        .to_str()
+        .ok_or_else(|| {
+            AppError::from(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "can't turn path into string",
+            )
+        })?
+        .to_string();
+
+    update(clubs::table)
+        .filter(clubs::id.eq(club_id))
+        .set(clubs::profile_picture_url.eq(&path_string))
+        .execute(conn)
+        .await?;
+
+    if old_pfp != DEFAULT_PROFILE_PICTURE_URL && other_pfps == 1 {
+        fs::remove_file(old_pfp)?;
+    }
+
+    Ok(Json(UploadPfpResponse { url: path_string }))
+}
+
 async fn edit_club(
     Extension(pool): Extension<DbPool>,
     Json(req): Json<ClubRequest>,
-    Path(club_id): Path<String>,
-    auth: Auth,
+    Auth(auth): Auth,
 ) -> AppResult<()> {
-    let club_id = auth.into_authorized(&club_id)?.club_db_id;
+    let club_id = auth.club_db_id;
 
     let conn = &mut pool.get().await?;
+
+    let socials = req.socials;
+
+    if let Some(website) = socials.website.as_ref() {
+        if Url::parse(website).is_err() {
+            return Err(AppError::from(
+                StatusCode::BAD_REQUEST,
+                "Website social isn't a valid URL",
+            ));
+        };
+    }
+
+    ensure_domain(&socials.instagram, "instagram.com")?;
+    ensure_domain(&socials.discord, "discord.gg")?;
+    ensure_domain(&socials.google_classroom, "classrpom.google.com")?;
 
     update(clubs::table)
         .set(ClubEdit {
             club_name: req.club_name,
-            email: req.email,
             meet_time: req.meet_time,
             description: req.description,
             about: req.about,
-            profile_picture_url: req.profile_picture_url,
         })
         .execute(conn)
         .await?;
@@ -118,7 +236,7 @@ async fn edit_club(
 
     update(club_socials::table)
         .filter(club_socials::club_id.eq(club_id))
-        .set(req.socials)
+        .set(socials)
         .execute(conn)
         .await?;
 
@@ -126,5 +244,25 @@ async fn edit_club(
 }
 
 pub fn app() -> Router {
-    Router::new().route("/:club_id", post(edit_club))
+    Router::new()
+        .route("/info", post(edit_club))
+        .route("/pfp", put(upload_pfp))
+}
+
+fn ensure_domain(url: &Option<String>, domain: &str) -> AppResult<()> {
+    if let Some(url) = url.as_ref() {
+        let Ok(social) = Url::parse(url) else {
+            return Err(AppError::from(StatusCode::BAD_REQUEST, format!("invalid social url, expected {domain} url")))
+        };
+        if social.host() != Some(Host::Domain(domain))
+            || (social.scheme() != "https" && social.scheme() != "http")
+        {
+            return Err(AppError::from(
+                StatusCode::BAD_REQUEST,
+                format!("invalid social url, expected {domain} url"),
+            ));
+        }
+    }
+
+    Ok(())
 }
