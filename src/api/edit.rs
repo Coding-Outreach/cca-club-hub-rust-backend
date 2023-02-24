@@ -183,7 +183,7 @@ async fn edit_club(
 
     ensure_domain(&socials.instagram, "instagram.com")?;
     ensure_domain(&socials.discord, "discord.gg")?;
-    ensure_domain(&socials.google_classroom, "classrpom.google.com")?;
+    ensure_domain(&socials.google_classroom, "classroom.google.com")?;
 
     update(clubs::table)
         .set(ClubEdit {
