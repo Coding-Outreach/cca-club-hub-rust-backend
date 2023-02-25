@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
     pub static ref FRONTEND_HOST: String = var("FRONTEND_HOST").expect("FRONTEND_HOST must be set for correct password reset urls to be generated");
 }
 
-pub async fn sanity_check() {
+pub async fn sanity_check() -> Result<(), LettreError> {
     let mbox = Mailbox::new(None, EMAIL_ADDRESS.clone());
     let email = Message::builder()
         .to(mbox.clone())
@@ -25,7 +25,9 @@ pub async fn sanity_check() {
         .body("SANITY CHECK".to_string())
         .unwrap();
 
-    send(email).await.expect("email sanity check failed");
+    send(email).await?;
+
+    Ok(())
 }
 
 pub async fn send(msg: Message) -> Result<LettreResponse, LettreError> {

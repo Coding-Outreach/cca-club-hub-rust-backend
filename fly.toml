@@ -13,7 +13,7 @@ processes = []
 [[services]]
   http_checks = []
   internal_port = 8080
-  processes = ["app"]
+  processes = ["cca_club_hub"]
   protocol = "tcp"
   script_checks = []
   [services.concurrency]

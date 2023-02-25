@@ -17,7 +17,9 @@ async fn main() {
 
     let config = Config::init_from_env().unwrap();
     ensure_jwt_secret_is_valid();
-    email::sanity_check().await;
+    if let Err(e) = email::sanity_check().await {
+        eprintln!("email sanity check failed. forgot password will not work: {e}")
+    };
 
     let pool = connect_to_db(&config.db_url);
     let cors = CorsLayer::new()
