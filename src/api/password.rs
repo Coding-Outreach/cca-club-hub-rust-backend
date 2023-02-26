@@ -22,9 +22,18 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::interval};
 
+type ResetState = Arc<Mutex<Resets>>;
+#[derive(Default)]
 struct Resets(HashMap<String, (Instant, i32)>);
+
+impl Resets {
+    async fn clean(&mut self) {
+        self.0
+            .retain(|_, (instant, _)| instant.elapsed() < RESET_ALLOWED_TIME);
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,7 +163,16 @@ async fn check_uid(
 }
 
 pub fn app() -> Router {
-    let shared_resets = Arc::new(Mutex::new(Resets(HashMap::new())));
+    let shared_resets = ResetState::default();
+    let uids = shared_resets.clone();
+    tokio::task::spawn(async move {
+        let mut interval = interval(Duration::from_secs(24 * 60 * 60));
+
+        loop {
+            interval.tick().await;
+            uids.lock().await.clean().await;
+        }
+    });
 
     Router::new()
         .route("/reset", post(password_request))
