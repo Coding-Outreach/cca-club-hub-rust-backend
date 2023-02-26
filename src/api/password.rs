@@ -31,7 +31,7 @@ struct Resets(HashMap<String, (Instant, i32)>);
 impl Resets {
     async fn clean(&mut self) {
         self.0
-            .retain(|_, (instant, _)| return instant.elapsed() < RESET_ALLOWED_TIME);
+            .retain(|_, (instant, _)| instant.elapsed() < RESET_ALLOWED_TIME);
     }
 }
 
@@ -165,7 +165,7 @@ async fn check_uid(
 pub fn app() -> Router {
     let shared_resets = ResetState::default();
     let uids = shared_resets.clone();
-    _ = tokio::task::spawn(async move {
+    tokio::task::spawn(async move {
         let mut interval = interval(Duration::from_secs(24 * 60 * 60));
 
         loop {
