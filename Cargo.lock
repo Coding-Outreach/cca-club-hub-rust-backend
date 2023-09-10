@@ -180,6 +180,7 @@ dependencies = [
  "mime",
  "nanoid",
  "password-hash",
+ "rand",
  "serde",
  "sha2",
  "tokio",

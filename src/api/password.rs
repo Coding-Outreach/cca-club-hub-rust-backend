@@ -25,13 +25,14 @@ use std::{
 use tokio::{sync::Mutex, time::interval};
 
 type ResetState = Arc<Mutex<Resets>>;
+
 #[derive(Default)]
-struct Resets(HashMap<String, (Instant, i32)>);
+pub struct Resets(pub HashMap<String, (Instant, Duration, i32)>);
 
 impl Resets {
     async fn clean(&mut self) {
         self.0
-            .retain(|_, (instant, _)| instant.elapsed() < RESET_ALLOWED_TIME);
+            .retain(|_, (instant, dur, _)| instant.elapsed() < *dur);
     }
 }
 
@@ -104,7 +105,7 @@ The CCA Club Hub Team.",
     match email::send(email).await {
         Ok(_) => {
             let mut resets = resets.lock().await;
-            resets.0.insert(uid, (Instant::now(), club.id));
+            resets.0.insert(uid, (Instant::now(), RESET_ALLOWED_TIME, club.id));
             Ok(())
         }
         Err(_) => Err(AppError::from(
@@ -122,14 +123,14 @@ async fn password_reset(
 ) -> AppResult<()> {
     let mut resets = resets.lock().await;
 
-    let Some((instant, club_id)) =  resets.0.get(&uid) else {
+    let Some((instant, allowed_time, club_id)) =  resets.0.get(&uid) else {
         return Err(AppError::from(
             StatusCode::UNAUTHORIZED,
             "invalid password reset url",
         ));
     };
 
-    if instant.elapsed() > RESET_ALLOWED_TIME {
+    if instant.elapsed() > *allowed_time {
         resets.0.remove(&uid);
         return Err(AppError::from(
             StatusCode::UNAUTHORIZED,
@@ -163,20 +164,21 @@ async fn check_uid(
 }
 
 pub fn app() -> Router {
-    let shared_resets = ResetState::default();
-    let uids = shared_resets.clone();
-    tokio::task::spawn(async move {
-        let mut interval = interval(Duration::from_secs(24 * 60 * 60));
+    // TODO we need to fix this. we moved the reset state to the api layer so we need to do something about this polling behaviour
+    // let shared_resets = ResetState::default();
+    // let uids = shared_resets.clone();
+    // tokio::task::spawn(async move {
+    //     let mut interval = interval(Duration::from_secs(24 * 60 * 60));
 
-        loop {
-            interval.tick().await;
-            uids.lock().await.clean().await;
-        }
-    });
+    //     loop {
+    //         interval.tick().await;
+    //         uids.lock().await.clean().await;
+    //     }
+    // });
 
     Router::new()
         .route("/reset", post(password_request))
         .route("/:uid", post(password_reset))
         .route("/check/:uid", get(check_uid))
-        .layer(Extension(shared_resets))
+        
 }

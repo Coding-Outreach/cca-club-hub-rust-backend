@@ -48,6 +48,8 @@ lazy_static::lazy_static! {
             decoding: DecodingKey::from_base64_secret(&secret).expect("JWT_SECRET is not valid base64"),
         }
     };
+
+    static ref ADMIN_KEY: String = std::env::var("ADMIN_KEY").expect("ADMIN_KEY must be set");
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,6 +110,27 @@ impl Auth {
                 StatusCode::UNAUTHORIZED,
                 "wrong credentials",
             )),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AdminOnly;
+
+
+#[async_trait]
+impl<B: Send> FromRequest<B> for AdminOnly {
+    type Rejection = ResponseStatusError;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let TypedHeader(Authorization(bearer)) = req
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "missing admin key"))?;
+        if bearer.token() != *ADMIN_KEY {
+            Err((StatusCode::UNAUTHORIZED, "incorrect admin key").into())
+        } else {
+            Ok(AdminOnly)
         }
     }
 }
