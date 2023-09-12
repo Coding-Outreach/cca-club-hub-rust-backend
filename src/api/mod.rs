@@ -1,6 +1,6 @@
-use std::{sync::Arc, collections::HashMap};
+use std::{collections::HashMap, sync::Arc};
 
-use axum::{Router, Extension};
+use axum::{Extension, Router};
 use tokio::sync::Mutex;
 
 use self::password::Resets;

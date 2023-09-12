@@ -22,14 +22,16 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tokio::{sync::Mutex, time::interval};
+use tokio::sync::Mutex;
 
+#[allow(dead_code)]
 type ResetState = Arc<Mutex<Resets>>;
 
 #[derive(Default)]
 pub struct Resets(pub HashMap<String, (Instant, Duration, i32)>);
 
 impl Resets {
+    #[allow(dead_code)]
     async fn clean(&mut self) {
         self.0
             .retain(|_, (instant, dur, _)| instant.elapsed() < *dur);
@@ -62,12 +64,12 @@ async fn password_request(
         .filter(clubs::email.eq(req.email))
         .first::<Club>(conn)
         .await
-        .optional()? else {
-        return
-            Err(AppError::from(
-                StatusCode::NOT_FOUND,
-                "could not find matching club",
-            ));
+        .optional()?
+    else {
+        return Err(AppError::from(
+            StatusCode::NOT_FOUND,
+            "could not find matching club",
+        ));
     };
 
     let uid = nanoid!();
@@ -105,7 +107,9 @@ The CCA Club Hub Team.",
     match email::send(email).await {
         Ok(_) => {
             let mut resets = resets.lock().await;
-            resets.0.insert(uid, (Instant::now(), RESET_ALLOWED_TIME, club.id));
+            resets
+                .0
+                .insert(uid, (Instant::now(), RESET_ALLOWED_TIME, club.id));
             Ok(())
         }
         Err(_) => Err(AppError::from(
@@ -123,7 +127,7 @@ async fn password_reset(
 ) -> AppResult<()> {
     let mut resets = resets.lock().await;
 
-    let Some((instant, allowed_time, club_id)) =  resets.0.get(&uid) else {
+    let Some((instant, allowed_time, club_id)) = resets.0.get(&uid) else {
         return Err(AppError::from(
             StatusCode::UNAUTHORIZED,
             "invalid password reset url",
@@ -180,5 +184,4 @@ pub fn app() -> Router {
         .route("/reset", post(password_request))
         .route("/:uid", post(password_reset))
         .route("/check/:uid", get(check_uid))
-        
 }
