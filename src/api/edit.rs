@@ -253,7 +253,10 @@ pub fn app() -> Router {
 fn ensure_domain(url: &Option<String>, domain: &str) -> AppResult<()> {
     if let Some(url) = url.as_ref() {
         let Ok(social) = Url::parse(url) else {
-            return Err(AppError::from(StatusCode::BAD_REQUEST, format!("invalid social url, expected {domain} url")))
+            return Err(AppError::from(
+                StatusCode::BAD_REQUEST,
+                format!("invalid social url, expected {domain} url"),
+            ));
         };
         if social.host() != Some(Host::Domain(domain))
             || (social.scheme() != "https" && social.scheme() != "http")

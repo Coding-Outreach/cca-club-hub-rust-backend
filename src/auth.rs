@@ -117,7 +117,6 @@ impl Auth {
 #[derive(Debug, Clone)]
 pub struct AdminOnly;
 
-
 #[async_trait]
 impl<B: Send> FromRequest<B> for AdminOnly {
     type Rejection = ResponseStatusError;

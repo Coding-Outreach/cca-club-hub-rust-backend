@@ -97,10 +97,7 @@ async fn register(
         .optional()?;
 
     let Some(new_club) = new_club else {
-        return Err(AppError::from(
-            StatusCode::CONFLICT,
-            "club already exists!",
-        ));
+        return Err(AppError::from(StatusCode::CONFLICT, "club already exists!"));
     };
 
     diesel::insert_into(club_socials::table)
@@ -136,8 +133,11 @@ The CCA Club Hub Team."#,
             Some("apathetic programmers".to_string()),
             EMAIL_ADDRESS.clone(),
         ))
-        .to(Mailbox::new(Some(new_club.username.clone()), destination_address))
-        .subject("Welcome to the CCA Club Hub!")
+        .to(Mailbox::new(
+            Some(new_club.username.clone()),
+            destination_address,
+        ))
+        .subject("CCA Club Hub Password Reset")
         .body(body)
         .unwrap();
 

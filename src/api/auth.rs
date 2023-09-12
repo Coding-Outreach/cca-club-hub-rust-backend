@@ -56,6 +56,5 @@ async fn login(
 }
 
 pub fn app() -> Router {
-    Router::new()
-        .route("/login", post(login))
+    Router::new().route("/login", post(login))
 }
