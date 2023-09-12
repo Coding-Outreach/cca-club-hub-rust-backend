@@ -11,13 +11,13 @@ lazy_static::lazy_static! {
     static ref EMAIL_USERNAME: String = var("EMAIL_USERNAME").expect("email username must be set for password reset responses");
     static ref EMAIL_PASSWORD: String = var("EMAIL_PASSWORD").expect("email access password must be set for password reset responses");
     static ref CREDS: Credentials = Credentials::new(EMAIL_USERNAME.to_string(), EMAIL_PASSWORD.to_string());
-    pub static ref EMAIL_ADDRESS: Address = EMAIL_USERNAME.parse::<Address>().expect("invalid email username");
+    pub static ref EMAIL_ADDRESS: Address = EMAIL_USERNAME.to_string().parse::<Address>().expect("invalid email username");
     // maybe figure out a better place to the HOST var
     pub static ref FRONTEND_HOST: String = var("FRONTEND_HOST").expect("FRONTEND_HOST must be set for correct password reset urls to be generated");
 }
 
 pub async fn sanity_check() -> Result<(), LettreError> {
-    let mbox = Mailbox::new(None, EMAIL_ADDRESS.clone());
+    let mbox = Mailbox::new(Some("apathetic programmers".to_string()), EMAIL_ADDRESS.clone());
     let email = Message::builder()
         .to(mbox.clone())
         .from(mbox)

@@ -1,4 +1,4 @@
-FROM rust as build
+FROM rust:1.69.0 as build
 
 RUN USER=root cargo new --bin cca_club_hub
 WORKDIR /cca_club_hub
@@ -19,7 +19,7 @@ FROM debian:11.3-slim
 RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
 	apt update; \
-    apt install --yes --no-install-recommends libpq-dev
+    apt install --yes --no-install-recommends libpq-dev ca-certificates
 
 COPY --from=build /cca_club_hub/target/release/cca_club_hub .
 
