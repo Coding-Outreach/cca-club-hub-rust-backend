@@ -137,7 +137,7 @@ The CCA Club Hub Team."#,
             EMAIL_ADDRESS.clone(),
         ))
         .to(Mailbox::new(Some(new_club.username.clone()), destination_address))
-        .subject("CCA Club Hub Password Reset")
+        .subject("Welcome to the CCA Club Hub!")
         .body(body)
         .unwrap();
 
