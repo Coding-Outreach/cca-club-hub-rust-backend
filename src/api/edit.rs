@@ -186,6 +186,7 @@ async fn edit_club(
     ensure_domain(&socials.google_classroom, "classroom.google.com")?;
 
     update(clubs::table)
+        .filter(clubs::id.eq(club_id))
         .set(ClubEdit {
             club_name: req.club_name,
             meet_time: req.meet_time,
