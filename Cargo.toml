@@ -29,3 +29,10 @@ tower-http = { version = "0.3.5", features = ["cors", "fs"] }
 sha2 = "0.10.6"
 url = "2.3.1"
 rand = "0.8.5"
+# openssl is an implicit dependency
+# lettre -> native-tls -> openssl
+# bump version for security fixes
+openssl = "0.10.55"
+# time is an implicit dependency
+# chrono -> time
+time = "0.2.23"
