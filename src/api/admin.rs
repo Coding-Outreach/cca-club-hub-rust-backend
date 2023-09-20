@@ -130,7 +130,7 @@ The CCA Club Hub Team."#,
 
     let email = Message::builder()
         .from(Mailbox::new(
-            Some("apathetic programmers".to_string()),
+            Some("CCA Club Hub".to_string()),
             EMAIL_ADDRESS.clone(),
         ))
         .to(Mailbox::new(
