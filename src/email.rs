@@ -17,7 +17,10 @@ lazy_static::lazy_static! {
 }
 
 pub async fn sanity_check() -> Result<(), LettreError> {
-    let mbox = Mailbox::new(Some("apathetic programmers".to_string()), EMAIL_ADDRESS.clone());
+    let mbox = Mailbox::new(
+        Some("apathetic programmers".to_string()),
+        EMAIL_ADDRESS.clone(),
+    );
     let email = Message::builder()
         .to(mbox.clone())
         .from(mbox)
